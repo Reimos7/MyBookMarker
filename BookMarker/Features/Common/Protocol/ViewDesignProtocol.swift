@@ -7,8 +7,12 @@
 
 import UIKit
 
-protocol ViewDesignProtocol: AnyObject {
+protocol DesignProtocol: AnyObject {
     func configureHierarchy()
     func configureLayout()
     func configureView()
+}
+
+protocol DesiginProtocolBind: DesignProtocol {
+    func bind()
 }

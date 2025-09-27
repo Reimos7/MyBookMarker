@@ -25,7 +25,7 @@
 		6E747C6B2E851D0E003599B3 /* Exceptions for "BookMarker" folder in "BookMarker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Application/Info.plist,
+				Info.plist,
 			);
 			target = 6E747C582E851D0C003599B3 /* BookMarker */;
 		};
