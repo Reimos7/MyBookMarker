@@ -1,5 +1,5 @@
 //
-//  ViewDesignProtocol.swift
+//  DesignProtocol.swift
 //  BookMarker
 //
 //  Created by Reimos on 9/25/25.

@@ -17,7 +17,19 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         
         window = UIWindow(windowScene: scene)
         
-        window?.rootViewController = SearchViewController()
+        var controllers:[UIViewController] = []
+        for tab in TabbarType.allCases {
+            let vc = tab.viewController
+            let nav = UINavigationController(rootViewController: vc)
+            nav.tabBarItem = UITabBarItem(title: tab.title, image: UIImage(systemName:tab.imageName), tag: tab.tag)
+            controllers.append(nav)
+        }
+        let tabBarController = UITabBarController()
+        tabBarController.viewControllers = controllers
+        tabBarController.tabBar.tintColor = .black
+        tabBarController.tabBar.backgroundColor = .white
+        window?.rootViewController = tabBarController
+        
         window?.makeKeyAndVisible()
     }
 

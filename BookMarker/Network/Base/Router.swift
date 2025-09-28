@@ -14,6 +14,7 @@ enum Router {
     case newBooks
     case author(author: String)
     case keyword(keyword: String)
+    case categoryBest(categoryId: BookCategory)
         
     var bookApiType: NetworkBookAPIType {
         switch self {
@@ -25,6 +26,8 @@ enum Router {
             return .author
         case .keyword:
             return .keyword
+        case .categoryBest:
+            return .bestSeller
         }
     }
     
@@ -37,9 +40,12 @@ enum Router {
             return URL(string: API.bookBaseUrl + "/ItemList.aspx?ttbkey=\(API.bookAPIKey)" + "&QueryType=ItemNewSpecial&MaxResults=10&start=1&SearchTarget=Book&output=JS&Version=20131101")!
         case .author(let author):
             return URL(string: API.bookBaseUrl + "/ItemSearch.aspx?ttbkey=\(API.bookAPIKey)&Query=\(author)" + "&QueryType=Author&MaxResults=10&start=1&SearchTarget=Book&output=JS&Version=20131101")!
-            
+
         case .keyword(let keyword):
             return URL(string: API.bookBaseUrl + "/ItemSearch.aspx?ttbkey=\(API.bookAPIKey)&Query=\(keyword)" + "&QueryType=Keyword&MaxResults=20&start=1&SearchTarget=Book&output=JS&Version=20131101")!
+
+        case .categoryBest(let categoryId):
+            return URL(string: API.bookBaseUrl + "/ItemList.aspx?ttbkey=\(API.bookAPIKey)" + "&QueryType=Bestseller&CategoryId=\(categoryId.rawValue)&MaxResults=10&start=1&SearchTarget=Book&output=JS&Version=20131101")!
         }
     }
     
@@ -52,6 +58,8 @@ enum Router {
         case .author(let author):
             return .get
         case .keyword(let keyword):
+            return .get
+        case .categoryBest:
             return .get
         }
     }
@@ -66,6 +74,8 @@ enum Router {
             return ["author": author]
         case .keyword(let keyword):
             return ["keyword": keyword]
+        case .categoryBest(let categoryId):
+            return nil
         }
     }
     

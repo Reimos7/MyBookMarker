@@ -30,7 +30,7 @@ final class NetworkManager: NetworkManagerProtocol {
     }
 
     func request<T: Decodable>(_ router: Router, responseType: T.Type) -> Single<Result<T, NetworkError>> {
-        return Single<Result<T, NetworkError>>.create { [weak self] single in
+        return Single.create { [weak self] single in
             guard let self = self else {
                 single(.success(.failure(.unknownError)))
                 return Disposables.create()
