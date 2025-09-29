@@ -134,6 +134,24 @@ extension SearchViewController: DesiginProtocolBind {
         navigationItem.rightBarButtonItem?.rx.tap
             .bind(to: searchTrigger)
             .disposed(by: disposeBag)
+        
+        collectionView.rx.itemSelected
+            .asDriver()
+            .withLatestFrom(output.books) { indexPath, items in
+                return items[indexPath.item]
+            }
+            .drive(with: self) { owner, item in
+                let detailVC = BookDetailViewController(book: item)
+                owner.navigationController?.pushViewController(detailVC, animated: true)
+            }
+            .disposed(by: disposeBag)
+
+        
+            
+
+        
+        
+        
     }
     
     func configureHierarchy() {

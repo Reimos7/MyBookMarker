@@ -67,12 +67,43 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
         $0.clipsToBounds = true
         $0.text = "소설"
     }
+    
+    // 별점 컨테이너
+    private let ratingContainer = UIView()
+
+    // 별 5개 스택뷰
+    private let starsStackView = UIStackView().then {
+        $0.axis = .horizontal
+        $0.spacing = 2
+        $0.alignment = .center
+    }
+
+    // 평점 라벨
+    private let ratingLabel = UILabel().then {
+        $0.font = .systemFont(ofSize: 14, weight: .semibold)
+        $0.textColor = .systemOrange
+        $0.textAlignment = .left
+    }
 
     override func configureHierarchy() {
         contentView.addSubview(containerView)
 
-        [rankLabel, coverImageView, titleLabel, authorLabel, publisherLabel, categoryTagLabel].forEach {
+        [rankLabel, coverImageView, titleLabel, authorLabel, publisherLabel, ratingContainer, categoryTagLabel].forEach {
             containerView.addSubview($0)
+        }
+
+        [starsStackView, ratingLabel].forEach {
+            ratingContainer.addSubview($0)
+        }
+
+        // 별 5개 추가
+        for _ in 0..<5 {
+            let starImageView = UIImageView().then {
+                $0.image = UIImage(systemName: "star.fill")
+                $0.tintColor = .systemGray4
+                $0.contentMode = .scaleAspectFit
+            }
+            starsStackView.addArrangedSubview(starImageView)
         }
     }
 
@@ -108,6 +139,32 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
             $0.leading.trailing.equalTo(titleLabel)
             $0.top.equalTo(authorLabel.snp.bottom).offset(8)
         }
+        
+        ratingContainer.snp.makeConstraints {
+            $0.leading.equalTo(titleLabel)
+            $0.top.equalTo(publisherLabel.snp.bottom).offset(10)
+            $0.trailing.lessThanOrEqualTo(titleLabel.snp.trailing)
+            $0.height.equalTo(20)
+        }
+
+        starsStackView.snp.makeConstraints {
+            $0.leading.equalToSuperview()
+            $0.centerY.equalToSuperview()
+           // $0.width.equalTo(100) // 별 5개 + 간격
+        }
+
+        // 각 별의 크기 설정
+        starsStackView.arrangedSubviews.forEach { star in
+            star.snp.makeConstraints {
+                $0.size.equalTo(14)
+            }
+        }
+
+        ratingLabel.snp.makeConstraints {
+            $0.leading.equalTo(starsStackView.snp.trailing).offset(8)
+            $0.centerY.equalToSuperview()
+            $0.trailing.lessThanOrEqualToSuperview()
+        }
 
         categoryTagLabel.snp.makeConstraints {
             $0.leading.equalTo(titleLabel)
@@ -128,6 +185,10 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
         publisherLabel.text = item.publisher
         categoryTagLabel.text = getCategoryTag(from: item.categoryName)
 
+        // 평점 설정
+        let rating = Double(item.customerReviewRank ?? 0)
+        configureRating(rating)
+
         if let coverURL = item.cover, let url = URL(string: coverURL) {
             coverImageView.kf.setImage(
                 with: url,
@@ -139,6 +200,33 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
             )
         } else {
             coverImageView.image = UIImage(systemName: "book.closed")
+        }
+    }
+
+    private func configureRating(_ rating: Double) {
+        // 평점 라벨 설정
+        ratingLabel.text = String(format: "%.1f", rating)
+
+        // 별 5개 설정
+        let fullStars = Int(rating)
+        let hasHalfStar = rating - Double(fullStars) >= 0.5
+
+        for (index, starView) in starsStackView.arrangedSubviews.enumerated() {
+            guard let starImageView = starView as? UIImageView else { continue }
+
+            if index < fullStars {
+                // 가득 찬 별
+                starImageView.image = UIImage(systemName: "star.fill")
+                starImageView.tintColor = .systemOrange
+            } else if index == fullStars && hasHalfStar {
+                // 반 별
+                starImageView.image = UIImage(systemName: "star.leadinghalf.filled")
+                starImageView.tintColor = .systemOrange
+            } else {
+                // 빈 별
+                starImageView.image = UIImage(systemName: "star")
+                starImageView.tintColor = .systemGray4
+            }
         }
     }
 

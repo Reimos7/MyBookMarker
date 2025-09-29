@@ -216,7 +216,7 @@ final class HomeViewController: UIViewController {
         let itemWidth = bestSellerCollectionView.frame.width
         let currentIndex = Int(round(currentOffset.x / itemWidth))
 
-        print("🔍 무한 스크롤 체크: 현재 인덱스 \(currentIndex), 원본 개수: \(originalItemCount)")
+        print("무한 스크롤 체크: 현재 인덱스 \(currentIndex), 원본 개수: \(originalItemCount)")
 
         // 첫 번째 복제 아이템(인덱스 0)에 있을 때 → 마지막 실제 아이템으로 점프
         if currentIndex == 0 {
@@ -377,11 +377,32 @@ extension HomeViewController: DesignProtocol {
                     .catchAndReturn([])
             }
             .observe(on: MainScheduler.instance)
+            .do(onNext: { [weak self] items in
+                self?.currentCategoryItems = items
+            })
             .bind(to: categoryBooksCollectionView.rx.items(
                 cellIdentifier: NewBookCell.reuseIdentifier,
                 cellType: NewBookCell.self
             )) { (index: Int, item: Item, cell: NewBookCell) in
                 cell.configure(with: item)
+            }
+            .disposed(by: disposeBag)
+
+        // 카테고리별 도서 셀 탭 이벤트
+        categoryBooksCollectionView.rx.itemSelected
+            .asDriver()
+            .withLatestFrom(categorySelectedSubject.asDriver(onErrorJustReturn: 0)) { indexPath, categoryIndex in
+                return (indexPath, categoryIndex)
+            }
+            .drive(with: self) { owner, data in
+                let (indexPath, _) = data
+                // 현재 표시된 아이템에서 선택된 셀의 데이터 가져오기
+                if indexPath.item < owner.currentCategoryItems.count {
+                    let selectedBook = owner.currentCategoryItems[indexPath.item]
+                    print("카테고리 도서 선택됨: \(selectedBook.title ?? "")")
+                    let detailVC = BookDetailViewController(book: selectedBook)
+                    owner.navigationController?.pushViewController(detailVC, animated: true)
+                }
             }
             .disposed(by: disposeBag)
     }
@@ -490,6 +511,32 @@ extension HomeViewController {
                 let searchVC = SearchViewController()
                 owner.navigationController?.pushViewController(searchVC, animated: true)
                 print("SearchViewController 푸시 완료")
+            }
+            .disposed(by: disposeBag)
+
+        // 베스트셀러 셀 탭 이벤트
+        bestSellerCollectionView.rx.itemSelected
+            .asDriver()
+            .withLatestFrom(output.bestSellers) { indexPath, items in
+                return items[indexPath.item]
+            }
+            .drive(with: self) { owner, selectedBook in
+                print("베스트셀러 선택됨: \(selectedBook.title ?? "")")
+                let detailVC = BookDetailViewController(book: selectedBook)
+                owner.navigationController?.pushViewController(detailVC, animated: true)
+            }
+            .disposed(by: disposeBag)
+
+        // 추천 신간 셀 탭 이벤트
+        newBooksCollectionView.rx.itemSelected
+            .asDriver()
+            .withLatestFrom(output.newBooks) { indexPath, items in
+                return items[indexPath.item]
+            }
+            .drive(with: self) { owner, selectedBook in
+                print("추천 신간 선택됨: \(selectedBook.title ?? "")")
+                let detailVC = BookDetailViewController(book: selectedBook)
+                owner.navigationController?.pushViewController(detailVC, animated: true)
             }
             .disposed(by: disposeBag)
     }

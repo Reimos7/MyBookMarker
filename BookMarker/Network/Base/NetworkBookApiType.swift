@@ -12,4 +12,5 @@ enum NetworkBookAPIType {
     case newBooks
     case author
     case keyword
+    case editorChoice
 }

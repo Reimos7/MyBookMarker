@@ -1,5 +1,5 @@
 //
-//  MainViewModel.swift
+//  HomeViewModel.swift
 //  BookMarker
 //
 //  Created by Reimos on 9/27/25.
@@ -109,11 +109,11 @@ final class HomeViewModel: BaseViewModel {
 
         input.categorySelected
             .map { indexPath in
-                print("🎯 카테고리 선택 이벤트 수신: \(indexPath.item)")
+                print("카테고리 선택 이벤트 수신: \(indexPath.item)")
                 return indexPath.item
             }
             .do(onNext: { index in
-                print("🎯 selectedCategoryIndex에 바인딩: \(index)")
+                print("selectedCategoryIndex에 바인딩: \(index)")
             })
             .bind(to: selectedCategoryIndex)
             .disposed(by: disposeBag)
@@ -122,7 +122,7 @@ final class HomeViewModel: BaseViewModel {
         selectedCategoryIndex
             .asObservable()
             .subscribe(onNext: { index in
-                print("🎯 selectedCategoryIndex 값 변경됨: \(index)")
+                print("selectedCategoryIndex 값 변경됨: \(index)")
             })
             .disposed(by: disposeBag)
 

@@ -9,12 +9,13 @@ import Foundation
 import Alamofire
 
 enum Router {
-    
+
     case bestSeller
     case newBooks
     case author(author: String)
     case keyword(keyword: String)
     case categoryBest(categoryId: BookCategory)
+    case editorChoice(categoryId: BookCategory)
         
     var bookApiType: NetworkBookAPIType {
         switch self {
@@ -28,6 +29,8 @@ enum Router {
             return .keyword
         case .categoryBest:
             return .bestSeller
+        case .editorChoice:
+            return .editorChoice
         }
     }
     
@@ -39,13 +42,18 @@ enum Router {
         case .newBooks:
             return URL(string: API.bookBaseUrl + "/ItemList.aspx?ttbkey=\(API.bookAPIKey)" + "&QueryType=ItemNewSpecial&MaxResults=10&start=1&SearchTarget=Book&output=JS&Version=20131101")!
         case .author(let author):
-            return URL(string: API.bookBaseUrl + "/ItemSearch.aspx?ttbkey=\(API.bookAPIKey)&Query=\(author)" + "&QueryType=Author&MaxResults=10&start=1&SearchTarget=Book&output=JS&Version=20131101")!
+            let encodedAuthor = author.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? author
+            return URL(string: API.bookBaseUrl + "/ItemSearch.aspx?ttbkey=\(API.bookAPIKey)&Query=\(encodedAuthor)" + "&QueryType=Author&MaxResults=10&start=1&SearchTarget=Book&output=JS&Version=20131101")!
 
         case .keyword(let keyword):
-            return URL(string: API.bookBaseUrl + "/ItemSearch.aspx?ttbkey=\(API.bookAPIKey)&Query=\(keyword)" + "&QueryType=Keyword&MaxResults=20&start=1&SearchTarget=Book&output=JS&Version=20131101")!
+            let encodedKeyword = keyword.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? keyword
+            return URL(string: API.bookBaseUrl + "/ItemSearch.aspx?ttbkey=\(API.bookAPIKey)&Query=\(encodedKeyword)" + "&QueryType=Keyword&MaxResults=20&start=1&SearchTarget=Book&output=JS&Version=20131101")!
 
         case .categoryBest(let categoryId):
             return URL(string: API.bookBaseUrl + "/ItemList.aspx?ttbkey=\(API.bookAPIKey)" + "&QueryType=Bestseller&CategoryId=\(categoryId.rawValue)&MaxResults=10&start=1&SearchTarget=Book&output=JS&Version=20131101")!
+
+        case .editorChoice(let categoryId):
+            return URL(string: API.bookBaseUrl + "/ItemList.aspx?ttbkey=\(API.bookAPIKey)" + "&QueryType=ItemEditorChoice&CategoryId=\(categoryId.rawValue)&MaxResults=10&start=1&SearchTarget=Book&output=JS&Version=20131101")!
         }
     }
     
@@ -61,6 +69,8 @@ enum Router {
             return .get
         case .categoryBest:
             return .get
+        case .editorChoice:
+            return .get
         }
     }
     
@@ -75,6 +85,8 @@ enum Router {
         case .keyword(let keyword):
             return ["keyword": keyword]
         case .categoryBest(let categoryId):
+            return nil
+        case .editorChoice(let categoryId):
             return nil
         }
     }
