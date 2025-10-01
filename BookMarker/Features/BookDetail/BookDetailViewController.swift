@@ -428,6 +428,8 @@ extension BookDetailViewController: DesignProtocol {
         output.isFavorite
             .drive(with: self) { owner, isFavorite in
                 let imageName = isFavorite ? "heart.fill" : "heart"
+              //  let toastMesage = isFavorite ? "
+            
                 owner.heartButton?.image = UIImage(systemName: imageName)
                 owner.heartButton?.tintColor = isFavorite ? .systemRed : .black
             }

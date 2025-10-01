@@ -14,7 +14,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+
+        // Realm 데이터베이스 초기화
+        setupDatabase()
+
         return true
+    }
+
+    // MARK: - Database Setup
+
+    // Realm 데이터베이스 초기화
+    // 앱 시작 시 데이터베이스를 설정하고 기본 폴더들을 생성
+    private func setupDatabase() {
+        // Realm 데이터베이스 초기화
+        RealmManager.shared.initializeDatabase()
     }
 
     // MARK: UISceneSession Lifecycle

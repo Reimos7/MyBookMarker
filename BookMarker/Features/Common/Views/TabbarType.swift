@@ -19,7 +19,7 @@ enum TabbarType: CaseIterable {
         case .home:
             return HomeViewController()
         case .my:
-            return ViewController()
+            return LibraryViewController()
         }
     }
     
