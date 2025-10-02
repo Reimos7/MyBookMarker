@@ -52,6 +52,9 @@ final class SearchCollectionViewCell: BaseCollectionViewCell {
     private let favoriteButton = FavoriteButton()
 
     private var disposeBag = DisposeBag()
+
+    // 좋아요 버튼 탭 이벤트를 외부로 전달
+    var favoriteButtonTapped: (() -> Void)?
     
     private lazy var bookInfoStackView = UIStackView().then {
         $0.axis = .vertical
@@ -116,7 +119,7 @@ final class SearchCollectionViewCell: BaseCollectionViewCell {
         coverImageView.image = nil
     }
 
-    func configure(with item: Item) {
+    func configure(with item: Item, isFavorite: Bool) {
         titleLabel.text = item.title
         authorLabel.text = item.author
         publisherLabel.text = item.publisher
@@ -136,17 +139,23 @@ final class SearchCollectionViewCell: BaseCollectionViewCell {
             coverImageView.image = UIImage(systemName: "book.closed")
         }
 
+        // 좋아요 상태 설정
+        favoriteButton.isSelected = isFavorite
+
         setupFavoriteButton()
     }
 
     private func setupFavoriteButton() {
         favoriteButton.rx.tap
             .subscribe(onNext: { [weak self] in
-                self?.favoriteButton.isSelected.toggle()
-                // TODO: 즐겨찾기 저장/삭제 로직 추가
-                print("Favorite button tapped")
+                self?.favoriteButtonTapped?()
             })
             .disposed(by: disposeBag)
+    }
+
+    /// 좋아요 상태 업데이트 (외부에서 호출)
+    func updateFavoriteState(_ isFavorite: Bool) {
+        favoriteButton.isSelected = isFavorite
     }
 
     private func getCategoryTag(from categoryName: String?) -> String {

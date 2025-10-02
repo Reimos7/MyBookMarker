@@ -3,7 +3,7 @@ MyTamagotchi.xcodeproj/# Created by https://www.toptal.com/developers/gitignore/
  
 **/*.xcconfig 
 **/API.swift
-
+.claude/
 ### Swift ###
 # Xcode
 #

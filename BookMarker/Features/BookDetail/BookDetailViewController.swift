@@ -387,9 +387,13 @@ extension BookDetailViewController: DesignProtocol {
     private func setupBindings() {
         guard let book = bookItem else { return }
 
+        // 삭제 확인 Subject
+        let deleteConfirmedSubject = PublishSubject<Void>()
+
         let input = BookDetailViewModel.Input(
             bookItem: Observable.just(book),
-            heartButtonTapped: heartButton?.rx.tap.asObservable() ?? Observable.never()
+            heartButtonTapped: heartButton?.rx.tap.asObservable() ?? Observable.never(),
+            deleteConfirmed: deleteConfirmedSubject.asObservable()
         )
 
         let output = viewModel.transform(input)
@@ -441,6 +445,21 @@ extension BookDetailViewController: DesignProtocol {
             .drive(with: self) { owner, message in
                 // TODO: Toast 라이브러리 연동
                 print("Toast: \(message)")
+                owner.view.makeToast(message)
+            }
+            .disposed(by: disposeBag)
+
+        // 폴더 선택 Alert 표시
+        output.showFolderSelection
+            .drive(with: self) { owner, item in
+                owner.showFolderSelectionAlert(for: item)
+            }
+            .disposed(by: disposeBag)
+
+        // 삭제 확인 Alert 표시
+        output.showDeleteConfirmation
+            .drive(with: self) { owner, item in
+                owner.showDeleteConfirmationAlert(for: item, deleteConfirmed: deleteConfirmedSubject)
             }
             .disposed(by: disposeBag)
 
@@ -470,5 +489,90 @@ extension BookDetailViewController: DesignProtocol {
             }
             .disposed(by: disposeBag)
 
+    }
+
+    // MARK: - Folder Selection Alert
+
+    private func showFolderSelectionAlert(for item: Item) {
+        guard let window = view.window else { return }
+
+        // FolderSelectionView 생성
+        let folderSelectionView = FolderSelectionView(bookTitle: item.title ?? "도서")
+        let folderSelectionVM = FolderSelectionViewModel()
+
+        // ViewModel Input
+        let input = FolderSelectionViewModel.Input(
+            viewDidLoad: Observable.just(()),
+            folderSelected: folderSelectionView.folderSelected.asObservable(),
+            createFolderTapped: folderSelectionView.createFolderTapped.asObservable()
+        )
+
+        // ViewModel Output
+        let output = folderSelectionVM.transform(input)
+
+        // 폴더 목록 바인딩
+        folderSelectionView.bind(folders: output.folders.asObservable())
+
+        // 폴더 선택 이벤트
+        output.selectedFolder
+            .drive(with: self) { owner, selectedFolder in
+                // Alert 닫기
+                folderSelectionView.hide()
+
+                // 선택한 폴더에 도서 추가
+                owner.viewModel.addBookToSelectedFolder(item: item, folder: selectedFolder)
+                    .subscribe(onNext: { (success, message) in
+                        // 성공 시 하트 버튼 상태 업데이트
+                        if success {
+                            owner.heartButton?.image = UIImage(systemName: "heart.fill")
+                            owner.heartButton?.tintColor = .systemRed
+                        }
+                        // Toast 메시지 표시
+                        owner.view.makeToast(message)
+                    })
+                    .disposed(by: owner.disposeBag)
+            }
+            .disposed(by: disposeBag)
+
+        // 새 폴더 만들기
+        output.showCreateFolder
+            .drive(with: self) { owner, _ in
+                folderSelectionView.hide()
+                print("새 폴더 만들기 화면으로 이동") // TODO: 새 폴더 생성 화면 구현
+            }
+            .disposed(by: disposeBag)
+
+        // 닫기 이벤트
+        folderSelectionView.closeTapped
+            .asDriver(onErrorDriveWith: .empty())
+            .drive(with: self) { owner, _ in
+                folderSelectionView.hide()
+            }
+            .disposed(by: disposeBag)
+
+
+        // Alert 표시
+        folderSelectionView.show(in: window)
+    }
+
+    private func showDeleteConfirmationAlert(for item: Item, deleteConfirmed: PublishSubject<Void>) {
+        let alert = UIAlertController(
+            title: "도서 삭제",
+            message: "저장된 도서를 삭제하시겠습니까?",
+            preferredStyle: .alert
+        )
+
+        // 취소 버튼
+        let cancelAction = UIAlertAction(title: "취소", style: .cancel, handler: nil)
+
+        // 확인 버튼
+        let confirmAction = UIAlertAction(title: "확인", style: .destructive) { _ in
+            deleteConfirmed.onNext(())
+        }
+
+        alert.addAction(cancelAction)
+        alert.addAction(confirmAction)
+
+        present(alert, animated: true, completion: nil)
     }
 }
