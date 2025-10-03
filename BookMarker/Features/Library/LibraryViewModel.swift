@@ -17,6 +17,7 @@ final class LibraryViewModel: BaseViewModel {
         let segmentChanged: Observable<Int>
         let addButtonTapped: Observable<Void>
         let folderMenuTapped: Observable<BookCardView.FolderBookData>
+        let folderTapped: Observable<BookCardView.FolderBookData>  // 폴더 카드 탭
         let bookTapped: Observable<Item>
     }
 
@@ -26,6 +27,7 @@ final class LibraryViewModel: BaseViewModel {
         let selectedSegment: Driver<Int>
         let navigateToBookDetail: Driver<Item>
         let showFolderMenu: Driver<BookCardView.FolderBookData>
+        let navigateToFolderDetail: Driver<BookCardView.FolderBookData>  // 폴더 상세 화면 이동
     }
 
     // MARK: - Dependencies
@@ -50,18 +52,18 @@ final class LibraryViewModel: BaseViewModel {
     func transform(_ input: Input) -> Output {
         // 화면 진입 시 Realm에서 데이터 로드
         input.viewWillAppear
-            .subscribe(onNext: { [weak self] _ in
-                self?.loadFoldersFromRealm()
-            })
+            .bind(with: self) { owner, _ in
+                owner.loadFoldersFromRealm()
+            }
             .disposed(by: disposeBag)
 
         // 세그먼트 변경 시 타입 변경 및 데이터 로드
         input.segmentChanged
-            .subscribe(onNext: { [weak self] index in
+            .bind(with: self) { owner, index in
                 let folderType: FolderType = index == 0 ? .book : .place
-                self?.currentFolderType = folderType
-                self?.loadFoldersFromRealm()
-            })
+                owner.currentFolderType = folderType
+                owner.loadFoldersFromRealm()
+            }
             .disposed(by: disposeBag)
 
         // 폴더 데이터 스트림
@@ -83,12 +85,17 @@ final class LibraryViewModel: BaseViewModel {
         let showFolderMenu = input.folderMenuTapped
             .asDriver(onErrorJustReturn: BookCardView.FolderBookData(title: "", subtitle: ""))
 
+        // 폴더 카드 탭 이벤트 (폴더 상세 화면으로 이동)
+        let navigateToFolderDetail = input.folderTapped
+            .asDriver(onErrorJustReturn: BookCardView.FolderBookData(title: "", subtitle: ""))
+
         return Output(
             folders: folders,
             showAddFolderAlert: showAddFolderAlert,
             selectedSegment: selectedSegment,
             navigateToBookDetail: navigateToBookDetail,
-            showFolderMenu: showFolderMenu
+            showFolderMenu: showFolderMenu,
+            navigateToFolderDetail: navigateToFolderDetail
         )
     }
 

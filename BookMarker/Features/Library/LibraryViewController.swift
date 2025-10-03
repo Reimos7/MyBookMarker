@@ -59,6 +59,7 @@ final class LibraryViewController: UIViewController {
 
     // Subject들
     private let folderMenuTappedSubject = PublishSubject<BookCardView.FolderBookData>()
+    private let folderTappedSubject = PublishSubject<BookCardView.FolderBookData>()
     private let bookTappedSubject = PublishSubject<Item>()
 
     override func viewDidLoad() {
@@ -157,6 +158,12 @@ extension LibraryViewController: DesignProtocol {
 
             bookCardView.configure(with: folderData)
 
+            // 폴더 카드 탭 이벤트 바인딩
+            bookCardView.onFolderTapped = { [weak self, folderData] in
+                print("폴더 카드 탭됨: \(folderData.title)")
+                self?.folderTappedSubject.onNext(folderData)
+            }
+
             // 메뉴 버튼 이벤트 바인딩 (클로저 캡처 문제 해결)
             bookCardView.menuButton.rx.tap
                 .do(onNext: { _ in
@@ -200,6 +207,7 @@ extension LibraryViewController: DesignProtocol {
             segmentChanged: segmentedControl.rx.selectedSegmentIndex.asObservable(),
             addButtonTapped: addButton.rx.tap.asObservable(),
             folderMenuTapped: folderMenuTappedSubject.asObservable(),
+            folderTapped: folderTappedSubject.asObservable(),
             bookTapped: bookTappedSubject.asObservable()
         )
 
@@ -219,6 +227,14 @@ extension LibraryViewController: DesignProtocol {
                 let detailVC = BookDetailViewController(book: book)
                 owner.navigationController?.pushViewController(detailVC, animated: true)
             }
+            .disposed(by: disposeBag)
+
+        // 폴더 상세화면으로 이동
+        output.navigateToFolderDetail
+            .drive(onNext: { [weak self] folderData in
+                let folderDetailVC = FolderDetailViewController(folderData: folderData)
+                self?.navigationController?.pushViewController(folderDetailVC, animated: true)
+            })
             .disposed(by: disposeBag)
 
         // 폴더 메뉴 표시

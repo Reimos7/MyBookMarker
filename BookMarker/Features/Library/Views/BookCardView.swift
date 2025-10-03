@@ -82,10 +82,14 @@ final class BookCardView: UIView {
     // MARK: - Properties
     private var folderData: FolderBookData?
 
+    // 폴더 카드 탭 이벤트 콜백
+    var onFolderTapped: (() -> Void)?
+
     // MARK: - Initialization
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
+        setupGesture()
     }
 
     required init?(coder: NSCoder) {
@@ -163,6 +167,16 @@ final class BookCardView: UIView {
         layout.minimumInteritemSpacing = 8
         layout.sectionInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
         return layout
+    }
+
+    private func setupGesture() {
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleFolderTap))
+        containerView.addGestureRecognizer(tapGesture)
+        containerView.isUserInteractionEnabled = true
+    }
+
+    @objc private func handleFolderTap() {
+        onFolderTapped?()
     }
 
     // MARK: - Public Methods
