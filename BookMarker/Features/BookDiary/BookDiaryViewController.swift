@@ -23,6 +23,9 @@ final class BookDiaryViewController: UIViewController {
     private var savedQuotes: [String] = []
     private var savedTags: [String] = []
 
+    // 기존 저장된 데이터 (수정 모드일 때 사용)
+    private var existingBook: BookRealmModel?
+
     // MARK: - UI Components
     private let scrollView = UIScrollView().then {
         $0.showsVerticalScrollIndicator = false
@@ -313,6 +316,7 @@ final class BookDiaryViewController: UIViewController {
         configureView()
         setupStars()
         setupDatePickers()
+        loadExistingData() // 기존 데이터 불러오기
         setupBindings()
         configureBookInfo()
     }
@@ -356,9 +360,47 @@ final class BookDiaryViewController: UIViewController {
                 return
             }
 
-            // 3. 입력값 수집
-            let diaryText = diaryTextView.text ?? ""
-            let rating = Double(selectedRating)
+            // 3. 입력값 수집 (빈값이면 기존값 유지)
+            let currentDiaryText = diaryTextView.text ?? ""
+            let finalDiaryContent: String?
+            if currentDiaryText.isEmpty {
+                // 입력값이 비어있으면 기존 값 유지
+                finalDiaryContent = existingBook?.diaryContent
+            } else {
+                finalDiaryContent = currentDiaryText
+            }
+
+            // 평점: 0이면 기존 값 유지, 아니면 새 값 사용
+            let finalRating: Double
+            if selectedRating == 0 {
+                finalRating = existingBook?.userRating ?? 0
+            } else {
+                finalRating = Double(selectedRating)
+            }
+
+            // 태그: 비어있으면 기존 값 유지
+            let finalTags: [String]
+            if savedTags.isEmpty {
+                if let existingTags = existingBook?.tags {
+                    finalTags = Array(existingTags)
+                } else {
+                    finalTags = []
+                }
+            } else {
+                finalTags = savedTags
+            }
+
+            // 구절: 비어있으면 기존 값 유지
+            let finalQuotes: [String]
+            if savedQuotes.isEmpty {
+                if let existingQuotes = existingBook?.quotes {
+                    finalQuotes = Array(existingQuotes)
+                } else {
+                    finalQuotes = []
+                }
+            } else {
+                finalQuotes = savedQuotes
+            }
 
             // "읽는 중" 상태일 때는 완료일을 nil로 설정
             let finalEndDate = isReadingComplete ? endDatePicker.date : nil
@@ -369,10 +411,10 @@ final class BookDiaryViewController: UIViewController {
                 isReadingComplete: isReadingComplete,
                 startDate: startDatePicker.date,
                 endDate: finalEndDate,
-                rating: rating,
-                diaryContent: diaryText.isEmpty ? nil : diaryText,
-                quotes: savedQuotes,
-                tags: savedTags
+                rating: finalRating,
+                diaryContent: finalDiaryContent,
+                quotes: finalQuotes,
+                tags: finalTags
             )
 
             // 5. 저장 성공 메시지 및 화면 닫기
@@ -426,6 +468,50 @@ final class BookDiaryViewController: UIViewController {
         // 기본 날짜를 오늘로 설정
         startDatePicker.date = Date()
         endDatePicker.date = Date()
+    }
+
+    private func loadExistingData() {
+        guard let isbn13 = bookItem.isbn13 else { return }
+
+        do {
+            // Realm에서 기존 저장된 도서 정보 불러오기
+            if let book = try bookRepository.getBook(byISBN: isbn13) {
+                existingBook = book
+
+                // 기존 데이터가 있으면 UI에 표시
+                if let diaryContent = book.diaryContent, !diaryContent.isEmpty {
+                    diaryTextView.text = diaryContent
+                }
+
+                if book.userRating > 0 {
+                    selectedRating = Int(book.userRating)
+                    updateStars()
+                    ratingLabel.text = "\(selectedRating)점"
+                }
+
+                if !book.tags.isEmpty {
+                    savedTags = Array(book.tags)
+                }
+
+                if !book.quotes.isEmpty {
+                    savedQuotes = Array(book.quotes)
+                }
+
+                // 읽기 상태
+                isReadingComplete = book.isReadingComplete
+
+                // 날짜
+                if let startDate = book.startDate {
+                    startDatePicker.date = startDate
+                }
+
+                if let endDate = book.endDate {
+                    endDatePicker.date = endDate
+                }
+            }
+        } catch {
+            print("[기존 데이터 로드 실패] \(error.localizedDescription)")
+        }
     }
 
     private func configureBookInfo() {
