@@ -67,6 +67,8 @@ final class FolderSelectionView: UIView {
         $0.layer.borderColor = UIColor.systemGray4.cgColor
         $0.layer.cornerRadius = 12
         $0.backgroundColor = .clear
+        
+        $0.isHidden = true
     }
 
     // MARK: - Properties

@@ -22,11 +22,11 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
     }
 
     private let rankLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 20, weight: .bold)
+        $0.font = .systemFont(ofSize: 14, weight: .bold)
         $0.textColor = .white
         $0.backgroundColor = .systemTeal
         $0.textAlignment = .center
-        $0.layer.cornerRadius = 16
+        $0.layer.cornerRadius = 12
         $0.clipsToBounds = true
     }
 
@@ -42,32 +42,41 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
     }
 
     private let titleLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 16, weight: .bold)
+        $0.font = .systemFont(ofSize: 14, weight: .bold)
         $0.textColor = .black
-        $0.numberOfLines = 0
+        $0.numberOfLines = 4
         $0.lineBreakMode = .byTruncatingTail
+        $0.adjustsFontSizeToFitWidth = true
+        $0.minimumScaleFactor = 0.7
     }
 
     private let authorLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 14, weight: .medium)
+        $0.font = .systemFont(ofSize: 13, weight: .medium)
         $0.textColor = .darkGray
+        $0.numberOfLines = 1
+        $0.adjustsFontSizeToFitWidth = true
+        $0.minimumScaleFactor = 0.8
     }
 
     private let publisherLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 13, weight: .regular)
+        $0.font = .systemFont(ofSize: 12, weight: .regular)
         $0.textColor = .systemGray
+        $0.numberOfLines = 1
+        $0.adjustsFontSizeToFitWidth = true
+        $0.minimumScaleFactor = 0.8
     }
 
-    private let categoryTagLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 13, weight: .medium)
+    private let categoryTagLabel = PaddingLabel().then {
+        $0.font = .systemFont(ofSize: 11, weight: .medium)
         $0.textColor = .systemGreen
         $0.backgroundColor = .systemGreen.withAlphaComponent(0.15)
         $0.textAlignment = .center
-        $0.layer.cornerRadius = 12
+        $0.layer.cornerRadius = 10
         $0.clipsToBounds = true
         $0.text = "소설"
+        $0.padding = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
     }
-    
+
     // 별점 컨테이너
     private let ratingContainer = UIView()
 
@@ -80,7 +89,7 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
 
     // 평점 라벨
     private let ratingLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 14, weight: .semibold)
+        $0.font = .systemFont(ofSize: 13, weight: .semibold)
         $0.textColor = .systemOrange
         $0.textAlignment = .left
     }
@@ -113,50 +122,49 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
         }
 
         rankLabel.snp.makeConstraints {
-            $0.top.leading.equalToSuperview().offset(16)
-            $0.size.equalTo(32)
+            $0.top.leading.equalToSuperview().offset(12)
+            $0.size.equalTo(24)
         }
 
         coverImageView.snp.makeConstraints {
-            $0.leading.equalToSuperview().offset(24)
-            $0.top.equalTo(rankLabel.snp.bottom).offset(2)
-            $0.bottom.equalToSuperview().offset(-24)
-            $0.width.equalTo(120)
+            $0.leading.equalToSuperview().offset(20)
+            $0.top.equalTo(rankLabel.snp.bottom).offset(4)
+            $0.bottom.equalToSuperview().offset(-20)
+            $0.width.equalTo(100)
         }
 
         titleLabel.snp.makeConstraints {
-            $0.leading.equalTo(coverImageView.snp.trailing).offset(24)
-            $0.trailing.equalToSuperview().offset(-24)
+            $0.leading.equalTo(coverImageView.snp.trailing).offset(16)
+            $0.trailing.equalToSuperview().offset(-16)
             $0.top.equalTo(coverImageView.snp.top)
         }
 
         authorLabel.snp.makeConstraints {
             $0.leading.trailing.equalTo(titleLabel)
-            $0.top.equalTo(titleLabel.snp.bottom).offset(12)
+            $0.top.equalTo(titleLabel.snp.bottom).offset(8)
         }
 
         publisherLabel.snp.makeConstraints {
             $0.leading.trailing.equalTo(titleLabel)
-            $0.top.equalTo(authorLabel.snp.bottom).offset(8)
+            $0.top.equalTo(authorLabel.snp.bottom).offset(6)
         }
-        
+
         ratingContainer.snp.makeConstraints {
             $0.leading.equalTo(titleLabel)
-            $0.top.equalTo(publisherLabel.snp.bottom).offset(10)
+            $0.top.equalTo(publisherLabel.snp.bottom).offset(8)
             $0.trailing.lessThanOrEqualTo(titleLabel.snp.trailing)
-            $0.height.equalTo(20)
+            $0.height.equalTo(18)
         }
 
         starsStackView.snp.makeConstraints {
             $0.leading.equalToSuperview()
             $0.centerY.equalToSuperview()
-           // $0.width.equalTo(100) // 별 5개 + 간격
         }
 
         // 각 별의 크기 설정
         starsStackView.arrangedSubviews.forEach { star in
             star.snp.makeConstraints {
-                $0.size.equalTo(14)
+                $0.size.equalTo(13)
             }
         }
 
@@ -169,8 +177,6 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
         categoryTagLabel.snp.makeConstraints {
             $0.leading.equalTo(titleLabel)
             $0.bottom.equalTo(coverImageView.snp.bottom)
-            $0.height.equalTo(26)
-            $0.width.greaterThanOrEqualTo(60)
         }
     }
 
@@ -181,9 +187,22 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
     func configure(with item: Item, rank: Int) {
         rankLabel.text = "\(rank)"
         titleLabel.text = item.title
-        authorLabel.text = item.author
+
+        // 저자명 정제: 첫 번째 저자만 표시
+        let mainAuthor = item.author?
+            .components(separatedBy: ",").first?
+            .components(separatedBy: "(").first?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        authorLabel.text = mainAuthor ?? item.author
+
         publisherLabel.text = item.publisher
-        categoryTagLabel.text = getCategoryTag(from: item.categoryName)
+
+        // 카테고리: 마지막 카테고리만 표시
+        let lastCategory = item.categoryName?
+            .components(separatedBy: ">")
+            .last?
+            .trimmingCharacters(in: .whitespaces)
+        categoryTagLabel.text = lastCategory ?? getCategoryTag(from: item.categoryName)
 
         // 평점 설정
         let rating = Double(item.customerReviewRank ?? 0)

@@ -20,45 +20,45 @@ final class BookCoverCell: BaseCollectionViewCell {
         $0.backgroundColor = .systemGray6
     }
 
-    private let titleLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 12, weight: .medium)
-        $0.textColor = .label
-        $0.numberOfLines = 2
-        $0.textAlignment = .center
-        $0.lineBreakMode = .byTruncatingTail
-    }
-
-    private let authorLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 10, weight: .regular)
-        $0.textColor = .secondaryLabel
-        $0.textAlignment = .center
-        $0.numberOfLines = 1
-    }
+//    private let titleLabel = UILabel().then {
+//        $0.font = .systemFont(ofSize: 12, weight: .medium)
+//        $0.textColor = .label
+//        $0.numberOfLines = 2
+//        $0.textAlignment = .center
+//        $0.lineBreakMode = .byTruncatingTail
+//    }
+//
+//    private let authorLabel = UILabel().then {
+//        $0.font = .systemFont(ofSize: 10, weight: .regular)
+//        $0.textColor = .secondaryLabel
+//        $0.textAlignment = .center
+//        $0.numberOfLines = 1
+//    }
 
     // MARK: - Initialization
     override func configureHierarchy() {
         contentView.addSubview(bookImageView)
-        contentView.addSubview(titleLabel)
-        contentView.addSubview(authorLabel)
+//        contentView.addSubview(titleLabel)
+//        contentView.addSubview(authorLabel)
     }
 
     override func configureLayout() {
         bookImageView.snp.makeConstraints {
-            $0.top.equalToSuperview()
-            $0.leading.trailing.equalToSuperview()
-            $0.height.equalTo(100)
+            $0.top.equalToSuperview().inset(8)
+            $0.horizontalEdges.equalToSuperview()
+            $0.bottom.equalToSuperview().inset(8)
         }
 
-        titleLabel.snp.makeConstraints {
-            $0.top.equalTo(bookImageView.snp.bottom).offset(4)
-            $0.leading.trailing.equalToSuperview()
-        }
-
-        authorLabel.snp.makeConstraints {
-            $0.top.equalTo(titleLabel.snp.bottom).offset(2)
-            $0.leading.trailing.equalToSuperview()
-            $0.bottom.lessThanOrEqualToSuperview()
-        }
+//        titleLabel.snp.makeConstraints {
+//            $0.top.equalTo(bookImageView.snp.bottom).offset(4)
+//            $0.leading.trailing.equalToSuperview()
+//        }
+//
+//        authorLabel.snp.makeConstraints {
+//            $0.top.equalTo(titleLabel.snp.bottom).offset(2)
+//            $0.leading.trailing.equalToSuperview()
+//            $0.bottom.lessThanOrEqualToSuperview()
+//        }
     }
 
     override func configureView() {
@@ -67,18 +67,18 @@ final class BookCoverCell: BaseCollectionViewCell {
 
     // MARK: - Configuration
     func configure(with item: Item) {
-        titleLabel.text = item.title
+      //  titleLabel.text = item.title
 
         // 저자명 정제
-        if let rawAuthor = item.author, !rawAuthor.isEmpty {
-            let mainAuthor = rawAuthor
-                .components(separatedBy: ",").first?
-                .components(separatedBy: "(").first?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            authorLabel.text = mainAuthor
-        } else {
-            authorLabel.text = "저자미상"
-        }
+//        if let rawAuthor = item.author, !rawAuthor.isEmpty {
+//            let mainAuthor = rawAuthor
+//                .components(separatedBy: ",").first?
+//                .components(separatedBy: "(").first?
+//                .trimmingCharacters(in: .whitespacesAndNewlines)
+//            authorLabel.text = mainAuthor
+//        } else {
+//            authorLabel.text = "저자미상"
+//        }
 
         // 책 이미지 설정
         if let coverURL = item.cover, let url = URL(string: coverURL) {
@@ -97,7 +97,7 @@ final class BookCoverCell: BaseCollectionViewCell {
         super.prepareForReuse()
         bookImageView.kf.cancelDownloadTask()
         bookImageView.image = nil
-        titleLabel.text = nil
-        authorLabel.text = nil
+//        titleLabel.text = nil
+//        authorLabel.text = nil
     }
 }

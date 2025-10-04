@@ -23,8 +23,8 @@ final class BookGridCell: BaseCollectionViewCell {
     }
 
     private let coverImageView = UIImageView().then {
-        $0.contentMode = .scaleAspectFill
-        $0.backgroundColor = .systemGray6
+        $0.contentMode = .scaleAspectFit
+        //$0.backgroundColor = .systemGray6
         $0.layer.cornerRadius = 8
         $0.clipsToBounds = true
     }
@@ -52,19 +52,37 @@ final class BookGridCell: BaseCollectionViewCell {
 
     private let starRatingView = StarRatingView()
 
-    private let tagsStackView = UIStackView().then {
-        $0.axis = .horizontal
-        $0.spacing = 4
-        $0.distribution = .fillProportionally
+    // 읽기 상태 컨테이너 (아이콘 + 텍스트)
+    private let readingStatusContainer = UIView().then {
+        $0.backgroundColor = .systemOrange
+        $0.layer.cornerRadius = 12
+        $0.clipsToBounds = true
+        $0.isHidden = false
+    }
+
+    private let readingStatusIcon = UIImageView().then {
+        $0.image = UIImage(systemName: "book.fill")
+        $0.tintColor = .white
+        $0.contentMode = .scaleAspectFit
+    }
+
+    private let readingStatusLabel = UILabel().then {
+        $0.text = "읽는 중"
+        $0.font = .systemFont(ofSize: 12, weight: .semibold)
+        $0.textColor = .white
     }
 
     // MARK: - Lifecycle
     override func configureHierarchy() {
         contentView.addSubview(containerView)
 
-        [coverImageView, statusBadge, titleLabel, authorLabel, starRatingView, tagsStackView].forEach {
+        [coverImageView, statusBadge, readingStatusContainer].forEach {
             containerView.addSubview($0)
         }
+
+        // 읽기 상태 컨테이너 내부
+        readingStatusContainer.addSubview(readingStatusIcon)
+        readingStatusContainer.addSubview(readingStatusLabel)
     }
 
     override func configureLayout() {
@@ -73,10 +91,8 @@ final class BookGridCell: BaseCollectionViewCell {
         }
 
         coverImageView.snp.makeConstraints {
-            $0.top.equalToSuperview().offset(12)
-            $0.centerX.equalToSuperview()
-            $0.width.equalTo(120)
-            $0.height.equalTo(160)
+            $0.top.leading.trailing.equalToSuperview().inset(8)
+            $0.bottom.equalTo(readingStatusContainer.snp.top).offset(-8)
         }
 
         statusBadge.snp.makeConstraints {
@@ -86,25 +102,25 @@ final class BookGridCell: BaseCollectionViewCell {
             $0.width.greaterThanOrEqualTo(40)
         }
 
-        titleLabel.snp.makeConstraints {
-            $0.top.equalTo(coverImageView.snp.bottom).offset(8)
-            $0.leading.trailing.equalToSuperview().inset(12)
+        // 읽기 상태 컨테이너 (도서 이미지 하단에 고정)
+        readingStatusContainer.snp.makeConstraints {
+            $0.centerX.equalToSuperview()
+            $0.height.equalTo(24)
+            $0.bottom.equalToSuperview().offset(-8)
         }
 
-        authorLabel.snp.makeConstraints {
-            $0.top.equalTo(titleLabel.snp.bottom).offset(4)
-            $0.leading.trailing.equalTo(titleLabel)
+        // 읽기 상태 아이콘
+        readingStatusIcon.snp.makeConstraints {
+            $0.leading.equalToSuperview().offset(8)
+            $0.centerY.equalToSuperview()
+            $0.width.height.equalTo(14)
         }
 
-        starRatingView.snp.makeConstraints {
-            $0.top.equalTo(authorLabel.snp.bottom).offset(6)
-            $0.leading.equalTo(titleLabel)
-        }
-
-        tagsStackView.snp.makeConstraints {
-            $0.top.equalTo(starRatingView.snp.bottom).offset(8)
-            $0.leading.trailing.equalTo(titleLabel)
-            $0.bottom.lessThanOrEqualToSuperview().offset(-12)
+        // 읽기 상태 레이블
+        readingStatusLabel.snp.makeConstraints {
+            $0.leading.equalTo(readingStatusIcon.snp.trailing).offset(6)
+            $0.centerY.equalToSuperview()
+            $0.trailing.equalToSuperview().offset(-8)
         }
     }
 
@@ -124,62 +140,6 @@ final class BookGridCell: BaseCollectionViewCell {
         } else {
             coverImageView.image = UIImage(systemName: "book.closed")
         }
-
-        // 제목
-        titleLabel.text = item.title
-
-        // 저자 (첫 번째 저자만)
-        let authorName = extractMainAuthor(from: item.author)
-        authorLabel.text = authorName
-
-        // 별점
-        if let reviewRank = item.customerReviewRank {
-            starRatingView.rating = Double(reviewRank)
-            starRatingView.isHidden = false
-        } else {
-            starRatingView.isHidden = true
-        }
-
-        // 태그들 (카테고리, 출판사 등)
-        setupTags(item: item)
-    }
-
-    private func setupTags(item: Item) {
-        // 기존 태그 제거
-        tagsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-
-        var tags: [String] = []
-
-        // 카테고리
-        if let category = item.categoryName?.components(separatedBy: ">").last?.trimmingCharacters(in: .whitespaces) {
-            tags.append(category)
-        }
-
-        // 출판사
-        if let publisher = item.publisher {
-            tags.append(publisher)
-        }
-
-        // 최대 2개까지만 표시
-        for tag in tags.prefix(2) {
-            let tagLabel = createTagLabel(text: tag)
-            tagsStackView.addArrangedSubview(tagLabel)
-        }
-    }
-
-    private func createTagLabel(text: String) -> UILabel {
-        let label = UILabel()
-        label.text = text
-        label.font = .systemFont(ofSize: 11, weight: .medium)
-        label.textColor = .secondaryLabel
-        label.backgroundColor = .systemGray6
-        label.textAlignment = .center
-        label.layer.cornerRadius = 8
-        label.clipsToBounds = true
-        label.snp.makeConstraints {
-            $0.height.equalTo(20)
-        }
-        return label
     }
 
     private func extractMainAuthor(from rawAuthor: String?) -> String {
@@ -193,14 +153,17 @@ final class BookGridCell: BaseCollectionViewCell {
         return mainAuthor ?? rawAuthor
     }
 
-    // MARK: - Status Badge
-    func setStatusBadge(text: String?, color: UIColor?) {
+    // MARK: - Reading Status
+    func setReadingStatus(text: String?, color: UIColor?) {
         if let text = text, let color = color {
-            statusBadge.text = text
-            statusBadge.backgroundColor = color
-            statusBadge.isHidden = false
+            readingStatusLabel.text = text
+            readingStatusContainer.backgroundColor = color
+            readingStatusContainer.isHidden = false
         } else {
-            statusBadge.isHidden = true
+            // 작성 전 상태 표시
+            readingStatusLabel.text = "작성 전"
+            readingStatusContainer.backgroundColor = .systemGray4
+            readingStatusContainer.isHidden = false
         }
     }
 }

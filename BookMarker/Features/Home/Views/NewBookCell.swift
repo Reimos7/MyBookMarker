@@ -28,19 +28,6 @@ final class NewBookCell: BaseCollectionViewCell {
         $0.clipsToBounds = true
     }
 
-    private let titleLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 15, weight: .bold)
-        $0.textColor = .black
-        $0.numberOfLines = 2
-        $0.lineBreakMode = .byTruncatingTail
-        $0.textAlignment = .left
-    }
-
-    private let authorLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 13, weight: .medium)
-        $0.textColor = .darkGray
-    }
-
     private let categoryTagLabel = UILabel().then {
         $0.font = .systemFont(ofSize: 11, weight: .medium)
         $0.textColor = .systemBlue
@@ -53,7 +40,7 @@ final class NewBookCell: BaseCollectionViewCell {
     override func configureHierarchy() {
         contentView.addSubview(containerView)
 
-        [coverImageView, titleLabel, authorLabel, categoryTagLabel].forEach {
+        [coverImageView, categoryTagLabel].forEach {
             containerView.addSubview($0)
         }
     }
@@ -66,27 +53,15 @@ final class NewBookCell: BaseCollectionViewCell {
         coverImageView.snp.makeConstraints {
             $0.top.equalToSuperview().offset(12)
             $0.leading.trailing.equalToSuperview().inset(12)
-            $0.height.equalTo(120)
-        }
-
-        titleLabel.snp.makeConstraints {
-            $0.top.equalTo(coverImageView.snp.bottom).offset(12)
-            $0.height.equalTo(15)
-            $0.leading.trailing.equalToSuperview().inset(12)
-        }
-
-        authorLabel.snp.makeConstraints {
-            $0.top.equalTo(titleLabel.snp.bottom).offset(6)
-            $0.height.equalTo(15)
-            $0.leading.trailing.equalToSuperview().inset(12)
+            $0.height.equalTo(160)
         }
 
         categoryTagLabel.snp.makeConstraints {
-            $0.top.equalTo(authorLabel.snp.bottom).offset(8)
-            $0.leading.equalToSuperview().offset(12)
-            $0.height.equalTo(15)
-            $0.width.greaterThanOrEqualTo(50)
-            $0.bottom.lessThanOrEqualToSuperview().inset(4)
+            $0.top.equalTo(coverImageView.snp.bottom).offset(8)
+            $0.centerX.equalToSuperview()
+            $0.height.equalTo(20)
+            $0.width.greaterThanOrEqualTo(60)
+            $0.bottom.equalToSuperview().offset(-12)
         }
     }
 
@@ -95,9 +70,7 @@ final class NewBookCell: BaseCollectionViewCell {
     }
 
     func configure(with item: Item) {
-        titleLabel.text = item.title
-        authorLabel.text = item.author
-        categoryTagLabel.text = getCategoryTag(from: item.categoryName)
+        categoryTagLabel.text = getLastCategory(from: item.categoryName)
 
         if let coverURL = item.cover, let url = URL(string: coverURL) {
             coverImageView.kf.setImage(
@@ -113,16 +86,15 @@ final class NewBookCell: BaseCollectionViewCell {
         }
     }
 
-    private func getCategoryTag(from categoryName: String?) -> String {
+    private func getLastCategory(from categoryName: String?) -> String {
         guard let category = categoryName else { return "도서" }
 
-        if category.contains("소설") { return "소설" }
-        if category.contains("인문") { return "인문" }
-        if category.contains("자기계발") { return "자기계발" }
-        if category.contains("경영") { return "경영" }
-        if category.contains("에세이") { return "에세이" }
-        if category.contains("과학") { return "과학" }
+        // 마지막 카테고리만 추출
+        let lastCategory = category
+            .components(separatedBy: ">")
+            .last?
+            .trimmingCharacters(in: .whitespaces)
 
-        return "기타"
+        return lastCategory ?? "도서"
     }
 }

@@ -77,23 +77,23 @@ final class SearchViewController: UIViewController {
         )
         navigationItem.leftBarButtonItem = backButton
 
-        let searchButton = UIBarButtonItem(
-            image: UIImage(systemName: "magnifyingglass"),
-            style: .plain,
-            target: self,
-            action: #selector(searchButtonTapped)
-        )
-        navigationItem.rightBarButtonItem = searchButton
+//        let searchButton = UIBarButtonItem(
+//            image: UIImage(systemName: "magnifyingglass"),
+//            style: .plain,
+//            target: self,
+//            action: #selector(searchButtonTapped)
+//        )
+       // navigationItem.rightBarButtonItem = searchButton
     }
 
     @objc private func backButtonTapped() {
         navigationController?.popViewController(animated: true)
     }
 
-    @objc private func searchButtonTapped() {
-        searchBar.textField.becomeFirstResponder()
-    }
-    
+//    @objc private func searchButtonTapped() {
+//        searchBar.textField.becomeFirstResponder()
+//    }
+//    
    
 }
 

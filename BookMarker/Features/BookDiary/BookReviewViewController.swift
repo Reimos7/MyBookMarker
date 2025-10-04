@@ -317,13 +317,13 @@ final class BookReviewViewController: UIViewController {
         )
         navigationItem.leftBarButtonItem?.tintColor = .label
 
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "pencil"),
-            style: .plain,
-            target: self,
-            action: #selector(editNavButtonTapped)
-        )
-        navigationItem.rightBarButtonItem?.tintColor = .label
+//        navigationItem.rightBarButtonItem = UIBarButtonItem(
+//            image: UIImage(systemName: "pencil"),
+//            style: .plain,
+//            target: self,
+//            action: #selector(editNavButtonTapped)
+//        )
+//        navigationItem.rightBarButtonItem?.tintColor = .label
     }
 
     @objc private func backButtonTapped() {

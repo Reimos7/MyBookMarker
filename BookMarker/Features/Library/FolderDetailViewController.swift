@@ -17,6 +17,7 @@ final class FolderDetailViewController: UIViewController {
     private let folderData: BookCardView.FolderBookData
     private let viewModel: FolderDetailViewModel
     private let disposeBag = DisposeBag()
+    private let refreshTrigger = PublishSubject<Void>()
 
     // MARK: - UI Components
     private let collectionView = UICollectionView(
@@ -31,7 +32,7 @@ final class FolderDetailViewController: UIViewController {
         let spacing: CGFloat = 16
         let itemWidth = (screenWidth - (spacing * 3)) / 2  // 좌우 여백 + 중간 간격
 
-        layout.itemSize = CGSize(width: itemWidth, height: 320)
+        layout.itemSize = CGSize(width: itemWidth, height: 240)
         layout.minimumLineSpacing = spacing
         layout.minimumInteritemSpacing = spacing
         layout.sectionInset = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
@@ -74,6 +75,8 @@ final class FolderDetailViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(false, animated: animated)
+        // 데이터 새로고침
+        refreshTrigger.onNext(())
     }
 
     // MARK: - Setup
@@ -92,6 +95,38 @@ final class FolderDetailViewController: UIViewController {
 
     @objc private func backButtonTapped() {
         navigationController?.popViewController(animated: true)
+    }
+
+    // MARK: - Helper Methods
+    /// Realm에서 읽기 상태를 조회하여 저자 밑에 표시
+    private func configureReadingStatusBadge(for cell: BookGridCell, item: Item) {
+        guard let isbn13 = item.isbn13 else {
+            cell.setReadingStatus(text: nil, color: nil)
+            return
+        }
+
+        let bookRepository = BookRepository()
+
+        do {
+            if let savedBook = try bookRepository.getBook(byISBN: isbn13) {
+                // 독서 일기가 작성되어 있는 경우에만 상태 표시
+                if savedBook.hasDiary {
+                    if savedBook.isReadingComplete {
+                        cell.setReadingStatus(text: "읽기 완료", color: .systemTeal)
+                    } else {
+                        cell.setReadingStatus(text: "읽는 중", color: .systemOrange)
+                    }
+                } else {
+                    // 일기가 없으면 상태 숨김
+                    cell.setReadingStatus(text: nil, color: nil)
+                }
+            } else {
+                cell.setReadingStatus(text: nil, color: nil)
+            }
+        } catch {
+            print("[읽기 상태 설정 오류] \(error.localizedDescription)")
+            cell.setReadingStatus(text: nil, color: nil)
+        }
     }
 
     // MARK: - Navigation
@@ -153,7 +188,9 @@ extension FolderDetailViewController: DesignProtocol {
     }
 
     private func setupBindings() {
-        let input = FolderDetailViewModel.Input()
+        let input = FolderDetailViewModel.Input(
+            refresh: refreshTrigger.asObservable()
+        )
         let output = viewModel.transform(input)
 
         // 책 목록 바인딩
@@ -161,11 +198,11 @@ extension FolderDetailViewController: DesignProtocol {
             .drive(collectionView.rx.items(
                 cellIdentifier: BookGridCell.reuseIdentifier,
                 cellType: BookGridCell.self
-            )) { index, item, cell in
+            )) { [weak self] index, item, cell in
                 cell.configure(with: item)
 
-                // 상태 뱃지 설정 (선택적)
-                // cell.setStatusBadge(text: "완독", color: .systemGreen)
+                // Realm에서 읽기 상태 조회하여 배지 표시
+                self?.configureReadingStatusBadge(for: cell, item: item)
             }
             .disposed(by: disposeBag)
 

@@ -30,41 +30,52 @@ final class BookDetailViewController: UIViewController {
 
     private let titleLabel = UILabel().then {
         $0.text = "스티브 잡스"
-        $0.font = .systemFont(ofSize: 16, weight: .bold)
+        $0.font = .systemFont(ofSize: 14, weight: .bold)
         $0.textColor = .black
-        $0.numberOfLines = 0
+        $0.numberOfLines = 4
+        $0.adjustsFontSizeToFitWidth = true
+        $0.minimumScaleFactor = 0.7
     }
 
     private let authorLabel = UILabel().then {
         $0.text = "월터 아이작슨"
         $0.font = .systemFont(ofSize: 14, weight: .medium)
         $0.textColor = .darkGray
+        $0.numberOfLines = 1
+        $0.adjustsFontSizeToFitWidth = true
+        $0.minimumScaleFactor = 0.8
     }
 
     private let publisherLabel = UILabel().then {
         $0.text = "민음사"
         $0.font = .systemFont(ofSize: 13, weight: .regular)
         $0.textColor = .gray
+        $0.numberOfLines = 1
+        $0.adjustsFontSizeToFitWidth = true
+        $0.minimumScaleFactor = 0.8
     }
 
     private let pubDateLabel = UILabel().then {
         $0.text = "2023년 10월"
         $0.font = .systemFont(ofSize: 13, weight: .regular)
         $0.textColor = .gray
+        $0.numberOfLines = 1
+        $0.isHidden = true
     }
 
     private let starRatingView = StarRatingView()
 
-    private let categoryLabel = UILabel().then {
+    private let categoryLabel = PaddingLabel().then {
         $0.text = "인물/평전"
-        $0.font = .systemFont(ofSize: 12, weight: .medium)
+        $0.font = .systemFont(ofSize: 11, weight: .medium)
         $0.textColor = .systemTeal
         $0.backgroundColor = .systemTeal.withAlphaComponent(0.1)
-        $0.layer.cornerRadius = 8
+        $0.layer.cornerRadius = 10
         $0.clipsToBounds = true
         $0.textAlignment = .center
         $0.layer.borderWidth = 1
         $0.layer.borderColor = UIColor.systemTeal.cgColor
+        $0.padding = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
     }
 
     // MARK: - 줄거리 섹션
@@ -216,9 +227,13 @@ final class BookDetailViewController: UIViewController {
             starRatingView.rating = 0.0
         }
 
-        // 카테고리 설정 (categoryName이 있다면)
+        // 카테고리 설정 (마지막 카테고리만 표시)
         if let categoryName = book.categoryName {
-            categoryLabel.text = categoryName
+            let lastCategory = categoryName
+                .components(separatedBy: ">")
+                .last?
+                .trimmingCharacters(in: .whitespaces)
+            categoryLabel.text = lastCategory ?? categoryName
         }
 
         // 줄거리 설정
@@ -229,7 +244,7 @@ final class BookDetailViewController: UIViewController {
         }
 
         // 저자의 다른 작품 타이틀 업데이트
-        otherBooksTitleLabel.text = "\(displayAuthor)의 다른 작품"
+        otherBooksTitleLabel.text = "\(displayAuthor)님의 다른 작품"
     }
 
     private func extractMainAuthor(from rawAuthor: String?) -> String {
@@ -328,12 +343,10 @@ extension BookDetailViewController: DesignProtocol {
             $0.width.equalTo(120)
         }
 
-        // 카테고리 라벨 (별점 아래에 배치)
+        // 카테고리 라벨 (도서 이미지 하단에 고정)
         categoryLabel.snp.makeConstraints {
-            $0.top.equalTo(starRatingView.snp.bottom).offset(8)
+            $0.bottom.equalTo(bookImageView.snp.bottom)
             $0.leading.equalTo(titleLabel.snp.leading)
-            $0.trailing.equalTo(titleLabel.snp.trailing)
-            $0.height.equalTo(24)
         }
 
         // 줄거리 타이틀
@@ -350,21 +363,21 @@ extension BookDetailViewController: DesignProtocol {
             $0.trailing.equalToSuperview().offset(-16)
         }
 
-        // 저자의 다른 작품 타이틀
+        // 저자의 다른 작품 타이틀 (초기 제약 - 동적으로 변경됨)
         otherBooksTitleLabel.snp.makeConstraints {
             $0.top.equalTo(descriptionLabel.snp.bottom).offset(16)
             $0.leading.equalToSuperview().offset(16)
             $0.trailing.equalToSuperview().offset(-16)
         }
 
-        // 저자의 다른 작품 컬렉션뷰
+        // 저자의 다른 작품 컬렉션뷰 (초기 제약 - 동적으로 변경됨)
         otherBooksCollectionView.snp.makeConstraints {
             $0.top.equalTo(otherBooksTitleLabel.snp.bottom).offset(4)
             $0.leading.trailing.equalToSuperview()
             $0.height.equalTo(300) // 임시 높이
         }
 
-        // 편집자 추천 타이틀
+        // 편집자 추천 타이틀 (초기 제약 - 동적으로 변경됨)
         recommendationTitleLabel.snp.makeConstraints {
             $0.top.equalTo(otherBooksCollectionView.snp.bottom).offset(32)
             $0.leading.equalToSuperview().offset(16)
@@ -418,12 +431,36 @@ extension BookDetailViewController: DesignProtocol {
             }
             .disposed(by: disposeBag)
 
-        // 저자의 다른 작품 개수에 따른 컬렉션뷰 높이 조정
+        // 저자의 다른 작품 개수에 따른 레이아웃 동적 조정
         output.otherBooks
             .drive(with: self) { owner, books in
-                let height = max(152, books.count * 132) // 각 셀 높이(120) + 간격(12) + 상하패딩(32)
-                owner.otherBooksCollectionView.snp.updateConstraints {
-                    $0.height.equalTo(height)
+                if books.isEmpty {
+                    // 다른 작품이 없으면 섹션 숨기고, "이런 책은 어때요?"를 바로 위에 배치
+                    owner.otherBooksTitleLabel.isHidden = true
+                    owner.otherBooksCollectionView.isHidden = true
+
+                    owner.recommendationTitleLabel.snp.remakeConstraints {
+                        $0.top.equalTo(owner.descriptionLabel.snp.bottom).offset(24)
+                        $0.leading.equalToSuperview().offset(16)
+                        $0.trailing.equalToSuperview().offset(-16)
+                    }
+                } else {
+                    // 다른 작품이 있으면 정상 표시
+                    owner.otherBooksTitleLabel.isHidden = false
+                    owner.otherBooksCollectionView.isHidden = false
+
+                    // 컬렉션뷰 높이 조정
+                    let height = max(152, books.count * 132) // 각 셀 높이(120) + 간격(12) + 상하패딩(32)
+                    owner.otherBooksCollectionView.snp.updateConstraints {
+                        $0.height.equalTo(height)
+                    }
+
+                    // "이런 책은 어때요?"를 다른 작품 아래에 배치
+                    owner.recommendationTitleLabel.snp.remakeConstraints {
+                        $0.top.equalTo(owner.otherBooksCollectionView.snp.bottom).offset(32)
+                        $0.leading.equalToSuperview().offset(16)
+                        $0.trailing.equalToSuperview().offset(-16)
+                    }
                 }
             }
             .disposed(by: disposeBag)
