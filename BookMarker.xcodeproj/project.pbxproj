@@ -200,6 +200,7 @@
 				DEVELOPMENT_TEAM = S6TPHNS4Y6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BookMarker/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BookMarker;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
@@ -233,6 +234,7 @@
 				DEVELOPMENT_TEAM = S6TPHNS4Y6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BookMarker/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BookMarker;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
