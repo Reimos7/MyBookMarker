@@ -2,7 +2,7 @@
 //  FolderDetailViewModel.swift
 //  BookMarker
 //
-//  Created by Claude on 10/3/25.
+//  Created by Reimos on 10/3/25.
 //
 
 import Foundation

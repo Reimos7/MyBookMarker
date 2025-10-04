@@ -2,7 +2,7 @@
 //  FolderDetailViewController.swift
 //  BookMarker
 //
-//  Created by Claude on 10/3/25.
+//  Created by Reimos on 10/3/25.
 //
 
 import UIKit
@@ -93,6 +93,41 @@ final class FolderDetailViewController: UIViewController {
     @objc private func backButtonTapped() {
         navigationController?.popViewController(animated: true)
     }
+
+    // MARK: - Navigation
+    /// 선택된 도서의 독서 일기 작성 여부에 따라 적절한 화면으로 이동
+    private func navigateToAppropriateScreen(for item: Item) {
+        // 1. ISBN13으로 Realm에서 도서 조회
+        guard let isbn13 = item.isbn13 else {
+            view.makeToast("도서 정보를 찾을 수 없습니다.")
+            return
+        }
+
+        let bookRepository = BookRepository()
+
+        do {
+            // 2. Realm에서 저장된 도서 찾기
+            guard let savedBook = try bookRepository.getBook(byISBN: isbn13) else {
+                view.makeToast("저장된 도서를 찾을 수 없습니다.")
+                return
+            }
+
+            // 3. 독서 일기 작성 여부 확인
+            if savedBook.hasDiary {
+                // 독서 일기가 있으면 -> BookReviewViewController (읽기 전용)
+                let reviewVC = BookReviewViewController(bookId: savedBook.id)
+                navigationController?.pushViewController(reviewVC, animated: true)
+            } else {
+                // 독서 일기가 없으면 -> BookDiaryViewController (작성 화면)
+                let diaryVC = BookDiaryViewController(book: item)
+                navigationController?.pushViewController(diaryVC, animated: true)
+            }
+
+        } catch {
+            view.makeToast("도서 정보를 불러오는데 실패했습니다.")
+            print("[네비게이션 오류] \(error.localizedDescription)")
+        }
+    }
 }
 
 // MARK: - UI Configuration
@@ -144,15 +179,14 @@ extension FolderDetailViewController: DesignProtocol {
             .disposed(by: disposeBag)
         
 
-        // 셀 선택 -> 상세 화면 이동
+        // 셀 선택 -> 독서 일기 작성 여부에 따라 화면 분기
         collectionView.rx.itemSelected
             .asDriver()
             .withLatestFrom(output.books) { indexPath, books in
                 return books[indexPath.item]
             }
-            .drive(with: self) { owner, book in
-                let detailVC = BookDetailViewController(book: book)
-                owner.navigationController?.pushViewController(detailVC, animated: true)
+            .drive(with: self) { owner, selectedBook in
+                owner.navigateToAppropriateScreen(for: selectedBook)
             }
             .disposed(by: disposeBag)
     }

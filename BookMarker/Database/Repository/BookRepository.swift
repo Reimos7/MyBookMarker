@@ -100,6 +100,53 @@ final class BookRepository {
         }
     }
 
+    /// 독서 일기 업데이트
+    /// - Parameters:
+    ///   - id: 도서 ID
+    ///   - isReadingComplete: 읽기 완료 여부
+    ///   - startDate: 독서 시작일
+    ///   - endDate: 독서 완료일
+    ///   - rating: 평점 (0.0 ~ 5.0)
+    ///   - diaryContent: 독서 일기 내용
+    ///   - quotes: 인상 깊은 구절 목록
+    ///   - tags: 태그 목록
+    func updateBookDiary(
+        id: ObjectId,
+        isReadingComplete: Bool,
+        startDate: Date?,
+        endDate: Date?,
+        rating: Double,
+        diaryContent: String?,
+        quotes: [String],
+        tags: [String]
+    ) throws {
+        let realm = try realmManager.getRealm()
+
+        guard let book = realm.object(ofType: BookRealmModel.self, forPrimaryKey: id) else {
+            throw NSError(domain: "BookRepository", code: 404, userInfo: [
+                NSLocalizedDescriptionKey: "도서를 찾을 수 없습니다."
+            ])
+        }
+
+        // 평점은 0.0 ~ 5.0 범위로 제한
+        let clampedRating = min(max(rating, 0.0), 5.0)
+
+        try realm.write {
+            book.isReadingComplete = isReadingComplete
+            book.startDate = startDate
+            book.endDate = endDate
+            book.userRating = clampedRating
+            book.diaryContent = diaryContent
+
+            // 기존 구절/태그 제거 후 새로운 데이터 추가
+            book.quotes.removeAll()
+            book.quotes.append(objectsIn: quotes)
+
+            book.tags.removeAll()
+            book.tags.append(objectsIn: tags)
+        }
+    }
+
     // MARK: - Delete
 
     /// 도서 삭제
@@ -173,6 +220,60 @@ final class BookRepository {
             }
             // 2. 도서 삭제
             realm.delete(book)
+        }
+    }
+
+    // MARK: - Debug Helpers
+
+    /// 디버깅: 도서의 독서 일기 정보를 출력
+    func printBookDiaryInfo(id: ObjectId) {
+        do {
+            let realm = try realmManager.getRealm()
+            guard let book = realm.object(ofType: BookRealmModel.self, forPrimaryKey: id) else {
+                print("[DEBUG] 도서를 찾을 수 없습니다.")
+                return
+            }
+
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print("[도서 정보]")
+            print("제목: \(book.title)")
+            print("저자: \(book.author ?? "미상")")
+            print("ISBN: \(book.isbn13 ?? "없음")")
+            print("")
+            print("[독서 일기 정보]")
+            print("읽기 완료: \(book.isReadingComplete ? "완료" : "읽는 중")")
+            print("시작일: \(book.startDate?.description ?? "없음")")
+            print("완료일: \(book.endDate?.description ?? "없음")")
+            print("평점: \(book.userRating)점")
+            print("독서 일기: \(book.diaryContent ?? "없음")")
+            print("인상 깊은 구절 (\(book.quotes.count)개): \(Array(book.quotes))")
+            print("태그 (\(book.tags.count)개): \(Array(book.tags))")
+            print("저장일: \(book.savedDate)")
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        } catch {
+            print("[DEBUG ERROR] \(error.localizedDescription)")
+        }
+    }
+
+    /// 디버깅: 모든 도서의 독서 일기 정보를 출력
+    func printAllBooksWithDiary() {
+        do {
+            let books = try getAllBooks()
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print("[전체 도서 목록] 총 \(books.count)권")
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+            for (index, book) in books.enumerated() {
+                print("\n[\(index + 1)] \(book.title)")
+                print("   저자: \(book.author ?? "미상")")
+                print("   읽기 완료: \(book.isReadingComplete ? "✓" : "✗")")
+                print("   평점: \(book.userRating)점")
+                print("   일기: \(book.hasDiary ? "작성됨" : "없음")")
+                print("   구절: \(book.quotes.count)개, 태그: \(book.tags.count)개")
+            }
+            print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+        } catch {
+            print("[DEBUG ERROR] \(error.localizedDescription)")
         }
     }
 }

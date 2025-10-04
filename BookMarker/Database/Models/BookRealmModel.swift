@@ -57,6 +57,25 @@ final class BookRealmModel: Object {
     // 사용자가 도서를 저장한 날짜
     @Persisted var savedDate: Date = Date()
 
+    // MARK: - Reading Diary
+    /// 읽기 상태 (false: 읽는 중, true: 읽기 완료)
+    @Persisted var isReadingComplete: Bool = false
+
+    /// 독서 시작 날짜
+    @Persisted var startDate: Date?
+
+    /// 독서 완료 날짜
+    @Persisted var endDate: Date?
+
+    /// 독서 일기 내용 (사용자가 작성한 독서 일기)
+    @Persisted var diaryContent: String?
+
+    /// 인상 깊은 구절 목록 (여러 개의 구절을 저장)
+    @Persisted var quotes: List<String> = List<String>()
+
+    /// 태그 목록 (도서 분류를 위한 사용자 정의 태그)
+    @Persisted var tags: List<String> = List<String>()
+
     // MARK: - Relationships
     // 도서와 연관된 장소 ID (선택적)
     // 도서를 읽은 장소나 추천 장소와의 연결
@@ -150,5 +169,44 @@ extension BookRealmModel {
     /// 평점을 별 개수로 반환 (0~5)
     var starRating: Int {
         return Int(round(userRating))
+    }
+
+    /// 독서 일기가 작성되었는지 확인
+    /// - 독서 일기 내용, 평점, 구절, 태그, 날짜 중 하나라도 있으면 true
+    var hasDiary: Bool {
+        // 독서 일기 내용이 있는 경우
+        if let content = diaryContent, !content.isEmpty {
+            return true
+        }
+
+        // 평점이 설정된 경우
+        if userRating > 0 {
+            return true
+        }
+
+        // 인상 깊은 구절이 있는 경우
+        if !quotes.isEmpty {
+            return true
+        }
+
+        // 태그가 있는 경우
+        if !tags.isEmpty {
+            return true
+        }
+
+        // 시작일이나 완료일이 설정된 경우
+        if startDate != nil || endDate != nil {
+            return true
+        }
+
+        return false
+    }
+
+    /// 독서 기간 계산 (일 단위)
+    var readingDuration: Int? {
+        guard let start = startDate, let end = endDate else { return nil }
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.day], from: start, to: end)
+        return components.day
     }
 }
