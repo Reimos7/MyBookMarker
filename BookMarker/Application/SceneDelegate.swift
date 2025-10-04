@@ -27,6 +27,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
         let tabBarController = UITabBarController()
         tabBarController.viewControllers = controllers
+        tabBarController.selectedIndex = 1 // 홈 화면을 기본으로 설정
         tabBarController.tabBar.tintColor = .black
         tabBarController.tabBar.backgroundColor = .white
         window?.rootViewController = tabBarController

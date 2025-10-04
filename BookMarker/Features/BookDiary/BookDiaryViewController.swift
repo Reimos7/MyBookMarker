@@ -323,7 +323,7 @@ final class BookDiaryViewController: UIViewController {
 
     // MARK: - Setup
     private func setupNavigationBar() {
-        title = "독서 일기"
+        title = "독서 기록"
 
         navigationItem.leftBarButtonItem = UIBarButtonItem(
             image: UIImage(systemName: "chevron.left"),

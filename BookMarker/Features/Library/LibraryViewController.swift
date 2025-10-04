@@ -282,7 +282,7 @@ extension LibraryViewController: DesignProtocol {
 
             // 편집 가능한 폴더는 삭제도 가능 (기본 폴더는 isEditable == false)
             let deleteAction = UIAlertAction(title: "삭제", style: .destructive) { [weak self] _ in
-                self?.viewModel.deleteFolder(folderId: folderData.id)
+                self?.showDeleteFolderConfirmAlert(for: folderData)
             }
             alert.addAction(deleteAction)
         }
@@ -330,6 +330,25 @@ extension LibraryViewController: DesignProtocol {
 
         alert.addAction(addAction)
         alert.addAction(cancelAction)
+
+        present(alert, animated: true)
+    }
+
+    private func showDeleteFolderConfirmAlert(for folderData: BookCardView.FolderBookData) {
+        let alert = UIAlertController(
+            title: "폴더 삭제",
+            message: "'\(folderData.title)' 폴더를 삭제하시겠습니까?\n폴더 내의 모든 도서도 함께 삭제됩니다.",
+            preferredStyle: .alert
+        )
+
+        let cancelAction = UIAlertAction(title: "취소", style: .cancel)
+
+        let confirmAction = UIAlertAction(title: "확인", style: .destructive) { [weak self] _ in
+            self?.viewModel.deleteFolder(folderId: folderData.id)
+        }
+
+        alert.addAction(cancelAction)
+        alert.addAction(confirmAction)
 
         present(alert, animated: true)
     }
