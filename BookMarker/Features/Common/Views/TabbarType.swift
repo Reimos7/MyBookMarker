@@ -15,7 +15,8 @@ enum TabbarType: CaseIterable {
     var viewController: UIViewController {
         switch self {
         case .map:
-            return ViewController()
+            return SearchViewController()
+            //return ViewController()
         case .home:
             return HomeViewController()
         case .my:
@@ -26,7 +27,7 @@ enum TabbarType: CaseIterable {
     var imageName: String {
         switch self {
         case .map:
-            return "map.fill"
+            return "magnifyingglass"
         case .home:
             return "house.fill"
         case .my:
@@ -48,11 +49,11 @@ enum TabbarType: CaseIterable {
     var title: String {
         switch self {
         case .map:
-            return "지도"
+            return ""
         case .home:
-            return "홈"
+            return ""
         case .my:
-            return "내 파일"
+            return ""
         }
     }
 }

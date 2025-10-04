@@ -18,7 +18,8 @@ final class SearchViewController: UIViewController {
     private let resultCountLabel = UILabel().then {
         $0.font = .systemFont(ofSize: 16, weight: .bold)
         $0.textColor = .black
-        $0.text = "검색 결과 (0건)"
+        //$0.text = "검색 결과 (0건)"
+        $0.text = "검색 결과"
     }
 
     private let collectionView = UICollectionView(
@@ -69,25 +70,9 @@ final class SearchViewController: UIViewController {
         title = ""
         navigationController?.navigationBar.tintColor = .black
 
-        let backButton = UIBarButtonItem(
-            image: UIImage(systemName: "chevron.left"),
-            style: .plain,
-            target: self,
-            action: #selector(backButtonTapped)
-        )
-        navigationItem.leftBarButtonItem = backButton
-
-//        let searchButton = UIBarButtonItem(
-//            image: UIImage(systemName: "magnifyingglass"),
-//            style: .plain,
-//            target: self,
-//            action: #selector(searchButtonTapped)
-//        )
-       // navigationItem.rightBarButtonItem = searchButton
-    }
-
-    @objc private func backButtonTapped() {
-        navigationController?.popViewController(animated: true)
+        // 탭바에서 진입하므로 백버튼 숨김
+        navigationItem.leftBarButtonItem = nil
+        navigationItem.hidesBackButton = true
     }
 
 //    @objc private func searchButtonTapped() {
@@ -143,10 +128,10 @@ extension SearchViewController: DesiginProtocolBind {
             }
             .disposed(by: disposeBag)
 
-        // 검색 결과 개수 표시
-        output.resultCount
-            .drive(resultCountLabel.rx.text)
-            .disposed(by: disposeBag)
+        // 검색 결과 개수 표시 (TODO: 나중에 구현)
+//        output.resultCount
+//            .drive(resultCountLabel.rx.text)
+//            .disposed(by: disposeBag)
 
         // 로딩 상태 처리
         output.isLoading

@@ -20,8 +20,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         var controllers:[UIViewController] = []
         for tab in TabbarType.allCases {
             let vc = tab.viewController
+            
+            vc.tabBarItem = UITabBarItem(title: tab.title, image: UIImage(systemName:tab.imageName), tag: tab.tag)
             let nav = UINavigationController(rootViewController: vc)
-            nav.tabBarItem = UITabBarItem(title: tab.title, image: UIImage(systemName:tab.imageName), tag: tab.tag)
             controllers.append(nav)
         }
         let tabBarController = UITabBarController()
