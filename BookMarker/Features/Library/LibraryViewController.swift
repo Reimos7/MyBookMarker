@@ -30,13 +30,14 @@ final class LibraryViewController: UIViewController {
         $0.contentMode = .scaleAspectFit
     }
 
-    private let segmentedControl = UISegmentedControl(items: ["내 서재", "내 장소"]).then {
-        $0.selectedSegmentIndex = 0
-        $0.backgroundColor = .systemGray6
-        $0.selectedSegmentTintColor = .systemBackground
-        $0.setTitleTextAttributes([.foregroundColor: UIColor.label], for: .selected)
-        $0.setTitleTextAttributes([.foregroundColor: UIColor.secondaryLabel], for: .normal)
-    }
+    // TODO: 추후 업데이트 시 재적용
+//    private let segmentedControl = UISegmentedControl(items: ["내 서재", "내 장소"]).then {
+//        $0.selectedSegmentIndex = 0
+//        $0.backgroundColor = .systemGray6
+//        $0.selectedSegmentTintColor = .systemBackground
+//        $0.setTitleTextAttributes([.foregroundColor: UIColor.label], for: .selected)
+//        $0.setTitleTextAttributes([.foregroundColor: UIColor.secondaryLabel], for: .normal)
+//    }
 
     private let scrollView = UIScrollView().then {
         $0.showsVerticalScrollIndicator = false
@@ -90,7 +91,8 @@ extension LibraryViewController: DesignProtocol {
 
         headerView.addSubview(titleLabel)
         headerView.addSubview(addButton)
-        headerView.addSubview(segmentedControl)
+        // TODO: 추후 업데이트 시 재적용
+        // headerView.addSubview(segmentedControl)
 
         scrollView.addSubview(contentView)
         contentView.addSubview(foldersStackView)
@@ -100,7 +102,7 @@ extension LibraryViewController: DesignProtocol {
         headerView.snp.makeConstraints {
             $0.top.equalTo(view.safeAreaLayoutGuide)
             $0.leading.trailing.equalToSuperview()
-            $0.height.equalTo(120)
+            $0.height.equalTo(60) // 세그먼트 제거로 높이 감소
         }
 
         titleLabel.snp.makeConstraints {
@@ -114,12 +116,13 @@ extension LibraryViewController: DesignProtocol {
             $0.size.equalTo(24)
         }
 
-        segmentedControl.snp.makeConstraints {
-            $0.top.equalTo(titleLabel.snp.bottom).offset(16)
-            $0.leading.equalToSuperview().offset(16)
-            $0.trailing.equalToSuperview().offset(-16)
-            $0.height.equalTo(36)
-        }
+        // TODO: 추후 업데이트 시 재적용
+//        segmentedControl.snp.makeConstraints {
+//            $0.top.equalTo(titleLabel.snp.bottom).offset(16)
+//            $0.leading.equalToSuperview().offset(16)
+//            $0.trailing.equalToSuperview().offset(-16)
+//            $0.height.equalTo(36)
+//        }
 
         scrollView.snp.makeConstraints {
             $0.top.equalTo(headerView.snp.bottom)
@@ -204,7 +207,7 @@ extension LibraryViewController: DesignProtocol {
     private func setupBindings() {
         let input = LibraryViewModel.Input(
             viewWillAppear: viewWillAppearSubject.asObservable(),
-            segmentChanged: segmentedControl.rx.selectedSegmentIndex.asObservable(),
+            segmentChanged: Observable.just(0), // 항상 내 서재(0)로 고정
             addButtonTapped: addButton.rx.tap.asObservable(),
             folderMenuTapped: folderMenuTappedSubject.asObservable(),
             folderTapped: folderTappedSubject.asObservable(),
@@ -255,15 +258,15 @@ extension LibraryViewController: DesignProtocol {
             }
             .disposed(by: disposeBag)
 
-        // 세그먼트 컨트롤
-        output.selectedSegment
-            .drive(with: self) { owner, index in
-                print("세그먼트 선택: \(index)")
-                let indexTitle = index == 0 ? "내 서재" : "내 장소"
-                self.titleLabel.text = indexTitle
-                // TODO: 내 서재 / 내 장소 전환 로직
-            }
-            .disposed(by: disposeBag)
+        // TODO: 추후 업데이트 시 재적용 - 세그먼트 컨트롤
+//        output.selectedSegment
+//            .drive(with: self) { owner, index in
+//                print("세그먼트 선택: \(index)")
+//                let indexTitle = index == 0 ? "내 서재" : "내 장소"
+//                self.titleLabel.text = indexTitle
+//                // TODO: 내 서재 / 내 장소 전환 로직
+//            }
+//            .disposed(by: disposeBag)
     }
 
     // MARK: - Helper Methods
