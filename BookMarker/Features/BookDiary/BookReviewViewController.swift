@@ -277,6 +277,18 @@ final class BookReviewViewController: UIViewController {
         $0.layer.cornerRadius = 10
     }
 
+    private let deleteButton = UIButton().then {
+        var config = UIButton.Configuration.filled()
+        config.title = "삭제하기"
+        config.image = UIImage(systemName: "trash")
+        config.imagePlacement = .leading
+        config.imagePadding = 8
+        config.baseBackgroundColor = .systemRed
+        config.baseForegroundColor = .white
+        config.cornerStyle = .medium
+        $0.configuration = config
+    }
+
     // MARK: - Init
     init(bookId: ObjectId) {
         self.bookId = bookId
@@ -362,6 +374,48 @@ final class BookReviewViewController: UIViewController {
                 owner.navigationController?.pushViewController(diaryVC, animated: true)
             }
             .disposed(by: disposeBag)
+
+        // 삭제하기 버튼
+        deleteButton.rx.tap
+            .asDriver()
+            .drive(with: self) { owner, _ in
+                owner.showDeleteAlert()
+            }
+            .disposed(by: disposeBag)
+    }
+
+    private func showDeleteAlert() {
+        let alert = UIAlertController(
+            title: "도서 삭제",
+            message: "저장된 도서를 삭제하시겠습니까?",
+            preferredStyle: .alert
+        )
+
+        let cancelAction = UIAlertAction(title: "취소", style: .cancel)
+
+        let confirmAction = UIAlertAction(title: "확인", style: .destructive) { [weak self] _ in
+            self?.deleteBook()
+        }
+
+        alert.addAction(cancelAction)
+        alert.addAction(confirmAction)
+
+        present(alert, animated: true)
+    }
+
+    private func deleteBook() {
+        do {
+            try bookRepository.deleteBook(id: bookId)
+            view.makeToast("도서가 삭제되었습니다.")
+
+            // 삭제 후 이전 화면으로 돌아가기 (0.5초 딜레이)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+        } catch {
+            view.makeToast("삭제에 실패했습니다.")
+            print("[삭제 실패] \(error.localizedDescription)")
+        }
     }
 
     private func loadBookData() {
@@ -454,6 +508,7 @@ final class BookReviewViewController: UIViewController {
         let hasDiary = book.hasDiary
         editButton.isHidden = !hasDiary
         writeDiaryButton.isHidden = hasDiary
+        deleteButton.isHidden = !hasDiary
     }
 
     private func updateStars(rating: Int) {
@@ -561,6 +616,7 @@ extension BookReviewViewController: DesignProtocol {
         // 버튼들은 카드 밖에 배치
         contentView.addSubview(editButton)
         contentView.addSubview(writeDiaryButton)
+        contentView.addSubview(deleteButton)
     }
 
     func configureLayout() {
@@ -765,6 +821,12 @@ extension BookReviewViewController: DesignProtocol {
         }
 
         writeDiaryButton.snp.makeConstraints {
+            $0.top.equalTo(editButton.snp.bottom).offset(12)
+            $0.leading.trailing.equalToSuperview().inset(16)
+            $0.height.equalTo(56)
+        }
+
+        deleteButton.snp.makeConstraints {
             $0.top.equalTo(editButton.snp.bottom).offset(12)
             $0.leading.trailing.equalToSuperview().inset(16)
             $0.height.equalTo(56)
