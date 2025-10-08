@@ -1,5 +1,5 @@
 //
-//  PlaceCell.swift
+//  MapPlaceCell.swift
 //  BookMarker
 //
 //  Created by Reimos on 10/5/25.
@@ -22,10 +22,17 @@ final class MapPlaceCell: BaseCollectionViewCell {
         $0.layer.cornerRadius = 8
         $0.backgroundColor = .systemGray5
     }
-
+    
     private let nameLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 18, weight: .bold)
+        $0.font = .systemFont(ofSize: 16, weight: .bold)
         $0.textColor = .black
+        $0.numberOfLines = 1
+    }
+
+    private let infoStackView = UIStackView().then {
+        $0.axis = .horizontal
+        $0.spacing = 4
+        $0.alignment = .center
     }
 
     private let categoryIconLabel = UILabel().then {
@@ -55,92 +62,82 @@ final class MapPlaceCell: BaseCollectionViewCell {
     }
 
     private let addressLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 14)
+        $0.font = .systemFont(ofSize: 13)
         $0.textColor = .darkGray
+        $0.numberOfLines = 1
     }
 
     private let descriptionLabel = UILabel().then {
-        $0.font = .systemFont(ofSize: 13)
+        $0.font = .systemFont(ofSize: 12)
         $0.textColor = .gray
-        $0.numberOfLines = 0
+        $0.numberOfLines = 1
     }
 
     private let favoriteButton = UIButton().then {
         $0.setImage(UIImage(systemName: "heart"), for: .normal)
+        $0.setImage(UIImage(systemName: "heart.fill"), for: .selected)
         $0.tintColor = .systemPink
     }
 
     // MARK: - BaseCollectionViewCell Methods
 
+    /// 14. 계층 구조 설정
     override func configureHierarchy() {
         contentView.backgroundColor = .clear
         contentView.addSubview(containerView)
-        
-        [placeImageView,nameLabel,categoryIconLabel,categoryLabel,starIconLabel,ratingLabel,distanceLabel,addressLabel,descriptionLabel,favoriteButton].forEach {
+
+        // 14-1. containerView에 모든 UI 요소 추가
+        [placeImageView, nameLabel, infoStackView, addressLabel,
+         descriptionLabel, favoriteButton].forEach {
             containerView.addSubview($0)
+        }
+
+        // 14-2. infoStackView에 정보 레이블들 추가
+        [categoryIconLabel, categoryLabel, starIconLabel,
+         ratingLabel, distanceLabel].forEach {
+            infoStackView.addArrangedSubview($0)
         }
     }
 
     override func configureLayout() {
         containerView.snp.makeConstraints {
-            $0.edges.equalToSuperview().inset(UIEdgeInsets(top: 8, left: 20, bottom: 8, right: 20))
+            $0.edges.equalToSuperview()
         }
 
         placeImageView.snp.makeConstraints {
             $0.leading.equalToSuperview().offset(12)
-            $0.top.equalToSuperview().offset(12)
-            $0.bottom.lessThanOrEqualToSuperview().inset(12)
+            $0.centerY.equalToSuperview()
             $0.width.height.equalTo(100)
-        }
-
-        nameLabel.snp.makeConstraints {
-            $0.top.equalTo(placeImageView)
-            $0.leading.equalTo(placeImageView.snp.trailing).offset(12)
-            $0.trailing.equalTo(favoriteButton.snp.leading).offset(-8)
-        }
-
-        categoryIconLabel.snp.makeConstraints {
-            $0.top.equalTo(nameLabel.snp.bottom).offset(6)
-            $0.leading.equalTo(nameLabel)
-        }
-
-        categoryLabel.snp.makeConstraints {
-            $0.centerY.equalTo(categoryIconLabel)
-            $0.leading.equalTo(categoryIconLabel.snp.trailing).offset(4)
-        }
-
-        starIconLabel.snp.makeConstraints {
-            $0.centerY.equalTo(categoryLabel)
-            $0.leading.equalTo(categoryLabel.snp.trailing).offset(12)
-        }
-
-        ratingLabel.snp.makeConstraints {
-            $0.centerY.equalTo(starIconLabel)
-            $0.leading.equalTo(starIconLabel.snp.trailing).offset(4)
-        }
-
-        distanceLabel.snp.makeConstraints {
-            $0.centerY.equalTo(ratingLabel)
-            $0.leading.equalTo(ratingLabel.snp.trailing).offset(8)
-        }
-
-        addressLabel.snp.makeConstraints {
-            $0.top.equalTo(categoryLabel.snp.bottom).offset(6)
-            $0.leading.equalTo(nameLabel)
-            $0.trailing.equalToSuperview().inset(12)
-        }
-
-        descriptionLabel.snp.makeConstraints {
-            $0.top.equalTo(addressLabel.snp.bottom).offset(6)
-            $0.leading.equalTo(nameLabel)
-            $0.trailing.equalToSuperview().inset(12)
-            $0.bottom.lessThanOrEqualToSuperview().inset(12)
         }
 
         favoriteButton.snp.makeConstraints {
             $0.top.equalToSuperview().offset(12)
             $0.trailing.equalToSuperview().inset(12)
             $0.width.height.equalTo(30)
+        }
+
+        nameLabel.snp.makeConstraints {
+            $0.top.equalToSuperview().offset(16)
+            $0.leading.equalTo(placeImageView.snp.trailing).offset(12)
+            $0.trailing.equalTo(favoriteButton.snp.leading).offset(-8)
+        }
+
+        infoStackView.snp.makeConstraints {
+            $0.top.equalTo(nameLabel.snp.bottom).offset(6)
+            $0.leading.equalTo(nameLabel)
+            $0.trailing.lessThanOrEqualToSuperview().inset(12)
+        }
+
+        addressLabel.snp.makeConstraints {
+            $0.top.equalTo(infoStackView.snp.bottom).offset(6)
+            $0.leading.equalTo(nameLabel)
+            $0.trailing.equalToSuperview().inset(12)
+        }
+
+        descriptionLabel.snp.makeConstraints {
+            $0.top.equalTo(addressLabel.snp.bottom).offset(4)
+            $0.leading.equalTo(nameLabel)
+            $0.trailing.equalToSuperview().inset(12)
         }
     }
 
@@ -149,22 +146,44 @@ final class MapPlaceCell: BaseCollectionViewCell {
     func configure(name: String, category: String, rating: Double, distance: String, address: String, description: String) {
         nameLabel.text = name
 
-        // 카테고리 아이콘 설정
         switch category {
         case "카페":
             categoryIconLabel.text = "☕️"
+            categoryLabel.textColor = .systemOrange
+            categoryIconLabel.textColor = .systemOrange
         case "도서관":
             categoryIconLabel.text = "📚"
+            categoryLabel.textColor = .systemBlue
+            categoryIconLabel.textColor = .systemBlue
         case "스터디카페":
             categoryIconLabel.text = "💼"
+            categoryLabel.textColor = .systemPurple
+            categoryIconLabel.textColor = .systemPurple
         default:
             categoryIconLabel.text = "📍"
+            categoryLabel.textColor = .systemGray
+            categoryIconLabel.textColor = .systemGray
         }
 
         categoryLabel.text = category
-        ratingLabel.text = "\(rating)"
+
+        if rating > 0 {
+            starIconLabel.isHidden = false
+            ratingLabel.isHidden = false
+            ratingLabel.text = String(format: "%.1f", rating)
+        } else {
+            starIconLabel.isHidden = true
+            ratingLabel.isHidden = true
+        }
+
         distanceLabel.text = "• \(distance)"
+
         addressLabel.text = address
+
         descriptionLabel.text = description
+
+        // 이미지는 일단 기본 배경색으로 
+        placeImageView.image = nil
+        placeImageView.backgroundColor = .systemGray5
     }
 }
