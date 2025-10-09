@@ -20,7 +20,7 @@ enum LocationAuthorizationStatus {
 }
 
 
-//m현재 위치를 가져오고 관리하는 싱글톤 클래스
+// 현재 위치를 가져오고 관리하는 싱글톤 클래스
 final class LocationManager: NSObject {
     static let shared = LocationManager()
     
@@ -105,13 +105,9 @@ final class LocationManager: NSObject {
     // MARK: - Location Updates
     // 위치 업데이트 시작
     func startUpdatingLocation() {
-        // 16-1. 위치 서비스 사용 가능 여부 확인
-        guard CLLocationManager.locationServicesEnabled() else {
-            print("위치 서비스가 비활성화되어 있습니다.")
-            return
-        }
-
-        // 위치 업데이트 시작
+        // iOS 14+ 경고 방지: locationServicesEnabled() 체크 제거
+        // delegate 콜백에서만 이 메서드를 호출하므로 이미 권한이 있다고 가정
+        // 위치 서비스가 비활성화된 경우 didFailWithError에서 처리됨
         locationManager.startUpdatingLocation()
         print("위치 업데이트 시작")
     }
@@ -152,21 +148,24 @@ final class LocationManager: NSObject {
 extension LocationManager: CLLocationManagerDelegate {
 
     // 권한 상태가 변경되었을 때 호출 (iOS 14+)
-    /// - Note: 인스턴스 프로퍼티(manager.authorizationStatus) 대신 클래스 메서드 사용하여 메인 스레드 블로킹 방지
+    // iOS 14+에서는 델리게이트 콜백이 호출되었다는 것 자체가 권한 변경을 의미
+    // 파라미터로 전달된 manager의 authorizationStatus를 바로 사용하면 경고 발생
+    // 대신 현재 시스템 권한 상태를 직접 확인하지 않고 updateAuthorizationStatus 호출
     @available(iOS 14.0, *)
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        // 클래스 메서드로 권한 상태 확인 (메인 스레드 블로킹 방지)
-        // manager.authorizationStatus 대신 CLLocationManager.authorizationStatus() 사용
-        updateAuthorizationStatus(CLLocationManager.authorizationStatus())
+        // iOS 14+에서는 delegate 호출 시점에 이미 권한 상태가 변경됨
+        // manager.authorizationStatus는 이 시점에서 안전하게 접근 가능
+        let status = manager.authorizationStatus
+        updateAuthorizationStatus(status)
     }
 
-    /// 권한 상태가 변경되었을 때 호출 (iOS 14 미만)
+    // 권한 상태가 변경되었을 때 호출 (iOS 14 미만)
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         // 변경된 권한 상태 확인 및 업데이트
         updateAuthorizationStatus(status)
     }
 
-    /// 2위치가 업데이트되었을 때 호출
+    // 위치가 업데이트되었을 때 호출
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         // 가장 최신 위치 가져오기
         guard let location = locations.last else { return }
