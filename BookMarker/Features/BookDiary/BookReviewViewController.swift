@@ -319,7 +319,7 @@ final class BookReviewViewController: UIViewController {
 
     // MARK: - Setup
     private func setupNavigationBar() {
-        title = "도서 정보"
+        title = "독서 카드"
         
         navigationController?.navigationBar.tintColor = .black
         navigationItem.backButtonTitle = ""

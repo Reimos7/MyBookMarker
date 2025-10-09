@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import IQKeyboardManagerSwift
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -13,6 +14,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        
+        IQKeyboardManager.shared.isEnabled = true
+        IQKeyboardManager.shared.keyboardDistance = -10 // 키보드와 텍스트 필드 사이 간격 (기본값: 10)
         // Override point for customization after application launch.
 
         // Realm 데이터베이스 초기화

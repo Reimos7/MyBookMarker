@@ -36,6 +36,7 @@ final class SearchViewController: UIViewController {
         $0.register(SearchCollectionViewCell.self, forCellWithReuseIdentifier: SearchCollectionViewCell.reuseIdentifier)
         $0.showsVerticalScrollIndicator = false
         $0.backgroundColor = .systemGray6
+        $0.keyboardDismissMode = .onDrag  // 스크롤 시 키보드 자동 숨김
     }
 
     private let disposeBag = DisposeBag()

@@ -11,6 +11,7 @@ import Then
 import RxSwift
 import RxCocoa
 import Kingfisher
+import IQKeyboardManagerSwift
 
 final class BookDiaryViewController: UIViewController {
 
@@ -29,7 +30,7 @@ final class BookDiaryViewController: UIViewController {
     // MARK: - UI Components
     private let scrollView = UIScrollView().then {
         $0.showsVerticalScrollIndicator = false
-        $0.keyboardDismissMode = .interactive
+        $0.keyboardDismissMode = .onDrag
     }
 
     private let contentView = UIView()
@@ -254,9 +255,9 @@ final class BookDiaryViewController: UIViewController {
 
     private let addQuoteButton = UIButton().then {
         $0.setTitle("구절 추가", for: .normal)
-        $0.setTitleColor(.secondaryLabel, for: .normal)
-        $0.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
-        $0.backgroundColor = .systemGray6
+        $0.setTitleColor(.white, for: .normal)
+        $0.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+        $0.backgroundColor = .systemTeal
         $0.layer.cornerRadius = 8
         $0.contentEdgeInsets = UIEdgeInsets(top: 12, left: 0, bottom: 12, right: 0)
     }
@@ -559,6 +560,8 @@ final class BookDiaryViewController: UIViewController {
                 owner.savedQuotes.append(quote)
                 owner.quoteTextField.text = ""
                 owner.view.makeToast("구절이 추가되었습니다 (\(owner.savedQuotes.count)개)")
+                
+                owner.view.endEditing(true)
             }
             .disposed(by: disposeBag)
 
@@ -581,6 +584,8 @@ final class BookDiaryViewController: UIViewController {
                 owner.savedTags.append(tag)
                 owner.tagTextField.text = ""
                 owner.view.makeToast("태그가 추가되었습니다 (\(owner.savedTags.count)개)")
+                
+                owner.view.endEditing(true)
             }
             .disposed(by: disposeBag)
     }
@@ -861,7 +866,7 @@ extension BookDiaryViewController: DesignProtocol {
         tagCardView.snp.makeConstraints {
             $0.top.equalTo(quoteCardView.snp.bottom).offset(16)
             $0.leading.trailing.equalToSuperview().inset(16)
-            $0.bottom.equalToSuperview().offset(-40)
+            $0.bottom.equalToSuperview().inset(4)
         }
 
         // 태그
