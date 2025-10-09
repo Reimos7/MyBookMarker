@@ -82,19 +82,9 @@ final class FolderDetailViewController: UIViewController {
     // MARK: - Setup
     private func setupNavigationBar() {
         title = folderData.title
-
-        // 뒤로가기 버튼
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "chevron.left"),
-            style: .plain,
-            target: self,
-            action: #selector(backButtonTapped)
-        )
-        navigationItem.leftBarButtonItem?.tintColor = .label
-    }
-
-    @objc private func backButtonTapped() {
-        navigationController?.popViewController(animated: true)
+        
+        navigationController?.navigationBar.tintColor = .black
+        navigationItem.backButtonTitle = ""
     }
 
     // MARK: - Helper Methods

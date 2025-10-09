@@ -324,14 +324,9 @@ final class BookDiaryViewController: UIViewController {
     // MARK: - Setup
     private func setupNavigationBar() {
         title = "독서 기록"
-
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "chevron.left"),
-            style: .plain,
-            target: self,
-            action: #selector(backButtonTapped)
-        )
-        navigationItem.leftBarButtonItem?.tintColor = .label
+        
+        navigationController?.navigationBar.tintColor = .black
+        navigationItem.backButtonTitle = ""
 
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: "저장",
@@ -340,10 +335,6 @@ final class BookDiaryViewController: UIViewController {
             action: #selector(saveButtonTapped)
         )
         navigationItem.rightBarButtonItem?.tintColor = .systemTeal
-    }
-
-    @objc private func backButtonTapped() {
-        navigationController?.popViewController(animated: true)
     }
 
     @objc private func saveButtonTapped() {

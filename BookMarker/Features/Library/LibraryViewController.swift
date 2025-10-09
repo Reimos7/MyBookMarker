@@ -146,6 +146,9 @@ extension LibraryViewController: DesignProtocol {
     func configureView() {
         view.backgroundColor = .systemBackground
         navigationController?.setNavigationBarHidden(true, animated: false)
+        
+        navigationController?.navigationBar.tintColor = .black
+        navigationItem.backButtonTitle = ""
     }
 
     private func createBookCardViews(with folders: [BookCardView.FolderBookData]) {

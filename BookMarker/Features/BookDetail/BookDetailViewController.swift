@@ -171,15 +171,9 @@ final class BookDetailViewController: UIViewController {
 
     private func setupNavigationBar() {
         title = "도서 상세"
-
-        // 뒤로가기 버튼
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "chevron.left"),
-            style: .plain,
-            target: self,
-            action: #selector(backButtonTapped)
-        )
-        navigationItem.leftBarButtonItem?.tintColor = .black
+        
+        navigationController?.navigationBar.tintColor = .black
+        navigationItem.backButtonTitle = ""
 
         // 하트 버튼 (좋아요/즐겨찾기)
         heartButton = UIBarButtonItem(
@@ -191,11 +185,6 @@ final class BookDetailViewController: UIViewController {
         heartButton?.tintColor = .black
         navigationItem.rightBarButtonItem = heartButton
     }
-
-    @objc private func backButtonTapped() {
-        navigationController?.popViewController(animated: true)
-    }
-
 
     private func configureBookInfo() {
         guard let book = bookItem else { return }

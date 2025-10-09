@@ -194,7 +194,8 @@ final class HomeViewController: UIViewController {
             $0.textColor = .systemTeal
         }
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: titleLabel)
-
+        navigationController?.navigationBar.tintColor = .black
+        navigationItem.backButtonTitle = ""
         // 검색 버튼 설정
 //        let searchButton = UIBarButtonItem(
 //            image: UIImage(systemName: "magnifyingglass"),

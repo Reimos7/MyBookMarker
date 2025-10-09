@@ -320,26 +320,10 @@ final class BookReviewViewController: UIViewController {
     // MARK: - Setup
     private func setupNavigationBar() {
         title = "도서 정보"
+        
+        navigationController?.navigationBar.tintColor = .black
+        navigationItem.backButtonTitle = ""
 
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "chevron.left"),
-            style: .plain,
-            target: self,
-            action: #selector(backButtonTapped)
-        )
-        navigationItem.leftBarButtonItem?.tintColor = .label
-
-//        navigationItem.rightBarButtonItem = UIBarButtonItem(
-//            image: UIImage(systemName: "pencil"),
-//            style: .plain,
-//            target: self,
-//            action: #selector(editNavButtonTapped)
-//        )
-//        navigationItem.rightBarButtonItem?.tintColor = .label
-    }
-
-    @objc private func backButtonTapped() {
-        navigationController?.popViewController(animated: true)
     }
 
     @objc private func editNavButtonTapped() {
