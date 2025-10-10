@@ -1101,9 +1101,31 @@ extension BookDiaryViewController: DesignProtocol {
 
     // 구절 삭제
     private func deleteQuote(at index: Int) {
-        savedQuotes.remove(at: index)
-        updateQuotesUI()
-        view.makeToast("구절이 삭제되었습니다 (\(savedQuotes.count)개)")
+        let quoteToDelete = savedQuotes[index] // 삭제할 구절 미리 가져오기
+        
+        // [수정] 확인 Alert 생성
+        let alert = UIAlertController(title: "구절 삭제", message: "이 구절을 삭제하시겠습니까?\n\"\(quoteToDelete)\"", preferredStyle: .alert)
+        
+        // 삭제 확인 액션
+        let deleteAction = UIAlertAction(title: "삭제", style: .destructive) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // [추가/이동] 실제 삭제 로직
+            self.savedQuotes.remove(at: index)
+            self.updateQuotesUI()
+            self.view.makeToast("구절이 삭제되었습니다 (\(self.savedQuotes.count)개)")
+        }
+        
+        // 취소 액션
+        let cancelAction = UIAlertAction(title: "취소", style: .cancel) { [weak self] _ in
+            // 취소 시 스와이프 상태 복원
+            self?.updateQuotesUI()
+        }
+        
+        alert.addAction(deleteAction)
+        alert.addAction(cancelAction)
+        
+        present(alert, animated: true)
     }
 
     // 저장된 태그들을 UI에 표시
