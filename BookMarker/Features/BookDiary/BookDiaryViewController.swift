@@ -262,6 +262,13 @@ final class BookDiaryViewController: UIViewController {
         $0.contentEdgeInsets = UIEdgeInsets(top: 12, left: 0, bottom: 12, right: 0)
     }
 
+    // 저장된 구절 표시 StackView
+    private let quotesStackView = UIStackView().then {
+        $0.axis = .vertical
+        $0.spacing = 12
+        $0.distribution = .fill
+    }
+
     // 태그 카드
     private let tagCardView = UIView().then {
         $0.backgroundColor = .systemBackground
@@ -296,6 +303,11 @@ final class BookDiaryViewController: UIViewController {
         $0.backgroundColor = .systemTeal
         $0.layer.cornerRadius = 8
         $0.contentEdgeInsets = UIEdgeInsets(top: 12, left: 24, bottom: 12, right: 24)
+    }
+
+    // 저장된 태그 표시 StackView (가로로 Wrap되는 FlowLayout)
+    private let tagsContainerView = UIView().then {
+        $0.backgroundColor = .clear
     }
 
     // MARK: - Init
@@ -370,29 +382,11 @@ final class BookDiaryViewController: UIViewController {
                 finalRating = Double(selectedRating)
             }
 
-            // 태그: 비어있으면 기존 값 유지
-            let finalTags: [String]
-            if savedTags.isEmpty {
-                if let existingTags = existingBook?.tags {
-                    finalTags = Array(existingTags)
-                } else {
-                    finalTags = []
-                }
-            } else {
-                finalTags = savedTags
-            }
+            // 태그: savedTags를 그대로 사용 (빈 배열도 허용 - 모두 삭제한 경우)
+            let finalTags = savedTags
 
-            // 구절: 비어있으면 기존 값 유지
-            let finalQuotes: [String]
-            if savedQuotes.isEmpty {
-                if let existingQuotes = existingBook?.quotes {
-                    finalQuotes = Array(existingQuotes)
-                } else {
-                    finalQuotes = []
-                }
-            } else {
-                finalQuotes = savedQuotes
-            }
+            // 구절: savedQuotes를 그대로 사용 (빈 배열도 허용 - 모두 삭제한 경우)
+            let finalQuotes = savedQuotes
 
             // "읽는 중" 상태일 때는 완료일을 nil로 설정
             let finalEndDate = isReadingComplete ? endDatePicker.date : nil
@@ -489,6 +483,10 @@ final class BookDiaryViewController: UIViewController {
                     savedQuotes = Array(book.quotes)
                 }
 
+                // UI 업데이트
+                updateQuotesUI()
+                updateTagsUI()
+
                 // 읽기 상태
                 isReadingComplete = book.isReadingComplete
 
@@ -559,8 +557,9 @@ final class BookDiaryViewController: UIViewController {
 
                 owner.savedQuotes.append(quote)
                 owner.quoteTextField.text = ""
+                owner.updateQuotesUI()  // UI 업데이트 추가
                 owner.view.makeToast("구절이 추가되었습니다 (\(owner.savedQuotes.count)개)")
-                
+
                 owner.view.endEditing(true)
             }
             .disposed(by: disposeBag)
@@ -583,8 +582,9 @@ final class BookDiaryViewController: UIViewController {
 
                 owner.savedTags.append(tag)
                 owner.tagTextField.text = ""
+                owner.updateTagsUI()  // UI 업데이트 추가
                 owner.view.makeToast("태그가 추가되었습니다 (\(owner.savedTags.count)개)")
-                
+
                 owner.view.endEditing(true)
             }
             .disposed(by: disposeBag)
@@ -670,12 +670,12 @@ extension BookDiaryViewController: DesignProtocol {
         }
 
         // 인상 깊은 구절 카드
-        [quoteTitleLabel, quoteTextField, addQuoteButton].forEach {
+        [quoteTitleLabel, quotesStackView, quoteTextField, addQuoteButton].forEach {
             quoteCardView.addSubview($0)
         }
 
         // 태그 카드
-        [tagTitleLabel, tagTextField, addTagButton].forEach {
+        [tagTitleLabel, tagsContainerView, tagTextField, addTagButton].forEach {
             tagCardView.addSubview($0)
         }
     }
@@ -849,8 +849,14 @@ extension BookDiaryViewController: DesignProtocol {
             $0.leading.trailing.equalToSuperview().inset(24)
         }
 
-        quoteTextField.snp.makeConstraints {
+        // 저장된 구절 표시 영역
+        quotesStackView.snp.makeConstraints {
             $0.top.equalTo(quoteTitleLabel.snp.bottom).offset(16)
+            $0.leading.trailing.equalToSuperview().inset(24)
+        }
+
+        quoteTextField.snp.makeConstraints {
+            $0.top.equalTo(quotesStackView.snp.bottom).offset(12)
             $0.leading.trailing.equalToSuperview().inset(24)
             $0.height.equalTo(44)
         }
@@ -875,8 +881,15 @@ extension BookDiaryViewController: DesignProtocol {
             $0.leading.trailing.equalToSuperview().inset(24)
         }
 
-        tagTextField.snp.makeConstraints {
+        // 저장된 태그 표시 영역
+        tagsContainerView.snp.makeConstraints {
             $0.top.equalTo(tagTitleLabel.snp.bottom).offset(16)
+            $0.leading.trailing.equalToSuperview().inset(24)
+            $0.height.equalTo(0)  // 동적으로 업데이트
+        }
+
+        tagTextField.snp.makeConstraints {
+            $0.top.equalTo(tagsContainerView.snp.bottom).offset(12)
             $0.leading.equalToSuperview().offset(24)
             $0.trailing.equalTo(addTagButton.snp.leading).offset(-12)
             $0.height.equalTo(44)
@@ -893,5 +906,283 @@ extension BookDiaryViewController: DesignProtocol {
 
     func configureView() {
         view.backgroundColor = UIColor.systemGray6
+    }
+
+    // MARK: - Update UI
+
+    /// 저장된 구절들을 UI에 표시
+    private func updateQuotesUI() {
+        // 기존 뷰 제거
+        quotesStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        // 구절이 없으면 빈 상태 표시
+//        guard !savedQuotes.isEmpty else {
+//            let emptyLabel = UILabel().then {
+//                $0.text = "← 왼쪽으로 스와이프하세요!"
+//                $0.font = .systemFont(ofSize: 13, weight: .regular)
+//                $0.textColor = .secondaryLabel
+//                $0.textAlignment = .left
+//            }
+//            quotesStackView.addArrangedSubview(emptyLabel)
+//            return
+//        }
+
+        // 각 구절을 카드로 표시
+        for (index, quote) in savedQuotes.enumerated() {
+            let quoteView = createQuoteCardView(quote: quote, index: index)
+            quotesStackView.addArrangedSubview(quoteView)
+        }
+    }
+
+    // 구절 카드 뷰 생성 (스와이프로 편집/삭제)
+    private func createQuoteCardView(quote: String, index: Int) -> UIView {
+        // 최상위 컨테이너 (clipsToBounds로 버튼 숨김)
+        let wrapperView = UIView()
+        wrapperView.backgroundColor = .clear
+        wrapperView.clipsToBounds = true
+        wrapperView.layer.cornerRadius = 12
+
+        // 버튼 영역 (배경에 고정)
+        let buttonContainer = UIView()
+        buttonContainer.backgroundColor = .clear
+
+        // 편집 버튼
+        let editButton = UIButton().then {
+            $0.setTitle("편집", for: .normal)
+            $0.setTitleColor(.white, for: .normal)
+            $0.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+            $0.backgroundColor = .systemBlue
+            $0.layer.cornerRadius = 8
+            $0.tag = index
+        }
+
+        // 삭제 버튼
+        let deleteButton = UIButton().then {
+            $0.setTitle("삭제", for: .normal)
+            $0.setTitleColor(.white, for: .normal)
+            $0.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+            $0.backgroundColor = .systemRed
+            $0.layer.cornerRadius = 8
+            $0.tag = index
+        }
+
+        // 구절 카드 (슬라이드되는 부분)
+        let contentView = UIView()
+        contentView.backgroundColor = .systemGray6
+        contentView.layer.cornerRadius = 12
+
+        // 구절 레이블
+        let quoteLabel = UILabel().then {
+            $0.text = quote
+            $0.font = .systemFont(ofSize: 14, weight: .regular)
+            $0.textColor = .label
+            $0.numberOfLines = 0
+        }
+
+        // 버튼 액션
+        editButton.rx.tap
+            .subscribe(with: self, onNext: { owner, _ in
+                owner.editQuote(at: index)
+            })
+            .disposed(by: disposeBag)
+
+        deleteButton.rx.tap
+            .subscribe(with: self, onNext: { owner, _ in
+                owner.deleteQuote(at: index)
+            })
+            .disposed(by: disposeBag)
+
+        // 스와이프 제스처
+        let swipeGesture = UIPanGestureRecognizer()
+        swipeGesture.rx.event
+            .subscribe(with: self, onNext: { owner, gesture in
+                owner.handleQuoteSwipe(gesture, contentView: contentView)
+            })
+            .disposed(by: disposeBag)
+        contentView.addGestureRecognizer(swipeGesture)
+
+        // 계층 구조
+        wrapperView.addSubview(buttonContainer)
+        buttonContainer.addSubview(editButton)
+        buttonContainer.addSubview(deleteButton)
+        wrapperView.addSubview(contentView)
+        contentView.addSubview(quoteLabel)
+
+        // 레이아웃
+        buttonContainer.snp.makeConstraints {
+            $0.edges.equalToSuperview()
+        }
+
+        editButton.snp.makeConstraints {
+            $0.centerY.equalToSuperview()
+            $0.trailing.equalToSuperview().offset(-8)
+            $0.width.equalTo(70)
+            $0.height.equalTo(40)
+        }
+
+        deleteButton.snp.makeConstraints {
+            $0.centerY.equalToSuperview()
+            $0.trailing.equalTo(editButton.snp.leading).offset(-8)
+            $0.width.equalTo(70)
+            $0.height.equalTo(40)
+        }
+
+        contentView.snp.makeConstraints {
+            $0.edges.equalToSuperview()
+        }
+
+        quoteLabel.snp.makeConstraints {
+            $0.top.bottom.equalToSuperview().inset(16)
+            $0.leading.equalToSuperview().offset(16)
+            $0.trailing.equalToSuperview().offset(-16)
+        }
+
+        wrapperView.snp.makeConstraints {
+            $0.height.greaterThanOrEqualTo(60)
+        }
+
+        return wrapperView
+    }
+
+    // 스와이프 제스처 처리
+    private func handleQuoteSwipe(_ gesture: UIPanGestureRecognizer, contentView: UIView) {
+        let translation = gesture.translation(in: contentView)
+
+        switch gesture.state {
+        case .changed:
+            // 왼쪽으로만 스와이프 허용
+            if translation.x < 0 {
+                let offset = max(translation.x, -156)  // 최대 156 (버튼 2개 + 간격)
+                contentView.transform = CGAffineTransform(translationX: offset, y: 0)
+            }
+
+        case .ended:
+            if translation.x < -50 {
+                // 버튼 표시 (왼쪽으로 156만큼 이동)
+                UIView.animate(withDuration: 0.3) {
+                    contentView.transform = CGAffineTransform(translationX: -156, y: 0)
+                }
+            } else {
+                // 원위치
+                UIView.animate(withDuration: 0.3) {
+                    contentView.transform = .identity
+                }
+            }
+
+        default:
+            break
+        }
+    }
+
+    // 구절 편집
+    private func editQuote(at index: Int) {
+        let alert = UIAlertController(title: "구절 편집", message: nil, preferredStyle: .alert)
+        alert.addTextField { textField in
+            textField.text = self.savedQuotes[index]
+        }
+
+        let saveAction = UIAlertAction(title: "저장", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let text = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !text.isEmpty else { return }
+
+            self.savedQuotes[index] = text
+            self.updateQuotesUI()
+            self.view.makeToast("구절이 수정되었습니다")
+        }
+
+        let cancelAction = UIAlertAction(title: "취소", style: .cancel)
+
+        alert.addAction(saveAction)
+        alert.addAction(cancelAction)
+
+        present(alert, animated: true)
+    }
+
+    // 구절 삭제
+    private func deleteQuote(at index: Int) {
+        savedQuotes.remove(at: index)
+        updateQuotesUI()
+        view.makeToast("구절이 삭제되었습니다 (\(savedQuotes.count)개)")
+    }
+
+    // 저장된 태그들을 UI에 표시
+    private func updateTagsUI() {
+        // 기존 뷰 제거
+        tagsContainerView.subviews.forEach { $0.removeFromSuperview() }
+
+        guard !savedTags.isEmpty else { return }
+
+        var xOffset: CGFloat = 0
+        var yOffset: CGFloat = 0
+        let spacing: CGFloat = 8
+        let maxWidth = UIScreen.main.bounds.width - 72  // 좌우 여백 고려
+
+        for (index, tag) in savedTags.enumerated() {
+            let tagButton = createTagButton(tag: tag, index: index)
+            tagsContainerView.addSubview(tagButton)
+
+            let tagWidth = tagButton.intrinsicContentSize.width
+
+            // 다음 줄로 넘어가야 하는지 체크
+            if xOffset + tagWidth > maxWidth && xOffset > 0 {
+                xOffset = 0
+                yOffset += 36 + spacing
+            }
+
+            tagButton.frame = CGRect(x: xOffset, y: yOffset, width: tagWidth, height: 36)
+            xOffset += tagWidth + spacing
+        }
+
+        // Container 높이 업데이트
+        tagsContainerView.snp.updateConstraints {
+            $0.height.equalTo(yOffset + 36)
+        }
+    }
+
+    // 태그 버튼 생성 (롱프레스로 삭제)
+    private func createTagButton(tag: String, index: Int) -> UIButton {
+        let button = UIButton().then {
+            $0.setTitle("#\(tag)", for: .normal)
+            $0.setTitleColor(.systemBlue, for: .normal)
+            $0.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+            $0.backgroundColor = .systemGray6
+            $0.layer.cornerRadius = 18
+            $0.layer.borderWidth = 1
+            $0.layer.borderColor = UIColor.systemBlue.cgColor
+            $0.contentEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
+            $0.tag = index
+        }
+
+        // 롱프레스 제스처
+        let longPress = UILongPressGestureRecognizer()
+        longPress.rx.event
+            .filter { $0.state == .began }
+            .subscribe(with: self, onNext: { owner, _ in
+                owner.deleteTag(at: index)
+            })
+            .disposed(by: disposeBag)
+        button.addGestureRecognizer(longPress)
+
+        return button
+    }
+
+    // 태그 삭제
+    private func deleteTag(at index: Int) {
+        let alert = UIAlertController(title: "태그 삭제", message: "'\(savedTags[index])' 태그를 삭제하시겠습니까?", preferredStyle: .alert)
+
+        let deleteAction = UIAlertAction(title: "삭제", style: .destructive) { [weak self] _ in
+            guard let self = self else { return }
+            self.savedTags.remove(at: index)
+            self.updateTagsUI()
+            self.view.makeToast("태그가 삭제되었습니다 (\(self.savedTags.count)개)")
+        }
+
+        let cancelAction = UIAlertAction(title: "취소", style: .cancel)
+
+        alert.addAction(deleteAction)
+        alert.addAction(cancelAction)
+
+        present(alert, animated: true)
     }
 }
