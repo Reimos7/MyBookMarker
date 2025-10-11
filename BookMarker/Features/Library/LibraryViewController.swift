@@ -13,13 +13,12 @@ import RxCocoa
 
 final class LibraryViewController: UIViewController {
 
-    // MARK: - UI Components
     private let headerView = UIView().then {
         $0.backgroundColor = .systemBackground
     }
 
     private let titleLabel = UILabel().then {
-        $0.text = "내 서재"
+        $0.text = "내 파일"
         $0.font = .systemFont(ofSize: 20, weight: .bold)
         $0.textColor = .label
     }
@@ -30,14 +29,17 @@ final class LibraryViewController: UIViewController {
         $0.contentMode = .scaleAspectFit
     }
 
-    // TODO: 추후 업데이트 시 재적용
-//    private let segmentedControl = UISegmentedControl(items: ["내 서재", "내 장소"]).then {
-//        $0.selectedSegmentIndex = 0
-//        $0.backgroundColor = .systemGray6
-//        $0.selectedSegmentTintColor = .systemBackground
-//        $0.setTitleTextAttributes([.foregroundColor: UIColor.label], for: .selected)
-//        $0.setTitleTextAttributes([.foregroundColor: UIColor.secondaryLabel], for: .normal)
-//    }
+    // 내 서재 / 내 장소 전환 세그먼트 컨트롤
+    private let segmentedControl = UISegmentedControl(items: ["내 서재", "내 장소"]).then {
+        $0.selectedSegmentIndex = 0
+        $0.backgroundColor = .systemGray6
+        $0.selectedSegmentTintColor = .systemBackground
+        $0.setTitleTextAttributes([.foregroundColor: UIColor.label], for: .selected)
+        $0.setTitleTextAttributes([.foregroundColor: UIColor.secondaryLabel], for: .normal)
+    }
+
+    // 내 서재 뷰 
+    private let myLibraryView = UIView()
 
     private let scrollView = UIScrollView().then {
         $0.showsVerticalScrollIndicator = false
@@ -51,12 +53,19 @@ final class LibraryViewController: UIViewController {
         $0.distribution = .fill
     }
 
+    // 내 장소 뷰
+    private let myPlacesView = MyPlacesView()
+
     private let disposeBag = DisposeBag()
     private let viewModel = LibraryViewModel()
 
-    // 폴더 데이터 관리
+    // 폴더 데이터 관리 (내 서재용)
     private var bookCardViews: [BookCardView] = []
     private var cardViewDisposeBags: [DisposeBag] = []
+
+    // 폴더 데이터 관리 (내 장소용)
+    private var placeCardViews: [BookCardView] = []
+    private var placeCardViewDisposeBags: [DisposeBag] = []
 
     // Subject들
     private let folderMenuTappedSubject = PublishSubject<BookCardView.FolderBookData>()
@@ -82,27 +91,27 @@ final class LibraryViewController: UIViewController {
     }
 }
 
-// MARK: - UI Configuration
 extension LibraryViewController: DesignProtocol {
 
     func configureHierarchy() {
-        view.addSubview(headerView)
-        view.addSubview(scrollView)
-
-        headerView.addSubview(titleLabel)
-        headerView.addSubview(addButton)
-        // TODO: 추후 업데이트 시 재적용
-        // headerView.addSubview(segmentedControl)
-
+        [headerView,myLibraryView,myPlacesView].forEach {
+            view.addSubview($0)
+        }
+        
+        myLibraryView.addSubview(scrollView)
         scrollView.addSubview(contentView)
         contentView.addSubview(foldersStackView)
+        
+        [titleLabel,addButton,segmentedControl].forEach {
+            headerView.addSubview($0)
+        }
     }
 
     func configureLayout() {
         headerView.snp.makeConstraints {
             $0.top.equalTo(view.safeAreaLayoutGuide)
             $0.leading.trailing.equalToSuperview()
-            $0.height.equalTo(60) // 세그먼트 제거로 높이 감소
+            $0.height.equalTo(108)
         }
 
         titleLabel.snp.makeConstraints {
@@ -116,18 +125,21 @@ extension LibraryViewController: DesignProtocol {
             $0.size.equalTo(24)
         }
 
-        // TODO: 추후 업데이트 시 재적용
-//        segmentedControl.snp.makeConstraints {
-//            $0.top.equalTo(titleLabel.snp.bottom).offset(16)
-//            $0.leading.equalToSuperview().offset(16)
-//            $0.trailing.equalToSuperview().offset(-16)
-//            $0.height.equalTo(36)
-//        }
+        segmentedControl.snp.makeConstraints {
+            $0.top.equalTo(titleLabel.snp.bottom).offset(16)
+            $0.leading.equalToSuperview().offset(16)
+            $0.trailing.equalToSuperview().offset(-16)
+            $0.height.equalTo(36)
+        }
 
-        scrollView.snp.makeConstraints {
+        myLibraryView.snp.makeConstraints {
             $0.top.equalTo(headerView.snp.bottom)
             $0.leading.trailing.equalToSuperview()
             $0.bottom.equalTo(view.safeAreaLayoutGuide)
+        }
+
+        scrollView.snp.makeConstraints {
+            $0.edges.equalToSuperview()
         }
 
         contentView.snp.makeConstraints {
@@ -141,6 +153,12 @@ extension LibraryViewController: DesignProtocol {
             $0.trailing.equalToSuperview().offset(-16)
             $0.bottom.equalToSuperview().offset(-20)
         }
+
+        myPlacesView.snp.makeConstraints {
+            $0.top.equalTo(headerView.snp.bottom)
+            $0.leading.trailing.equalToSuperview()
+            $0.bottom.equalTo(view.safeAreaLayoutGuide)
+        }
     }
 
     func configureView() {
@@ -149,8 +167,26 @@ extension LibraryViewController: DesignProtocol {
         
         navigationController?.navigationBar.tintColor = .black
         navigationItem.backButtonTitle = ""
+
+        // 초기 상태: 내 서재 표시, 내 장소 숨김
+        myLibraryView.isHidden = false
+        myPlacesView.isHidden = true
     }
 
+    // 세그먼트 인덱스에 따라 뷰 전환
+    private func switchView(to index: Int) {
+        if index == 0 {
+            // 내 서재 선택
+            myLibraryView.isHidden = false
+            myPlacesView.isHidden = true
+        } else {
+            // 내 장소 선택
+            myLibraryView.isHidden = true
+            myPlacesView.isHidden = false
+        }
+    }
+
+    /// 내 서재 폴더 카드 생성 (도서 폴더)
     private func createBookCardViews(with folders: [BookCardView.FolderBookData]) {
         // 기존 뷰들과 disposeBag들 제거
         bookCardViews.forEach { $0.removeFromSuperview() }
@@ -207,10 +243,61 @@ extension LibraryViewController: DesignProtocol {
         }
     }
 
+    /// 내 장소 폴더 카드 생성 (장소 폴더)
+    private func createPlaceCardViews(with folders: [BookCardView.FolderBookData]) {
+        // 기존 뷰들과 disposeBag들 제거
+        placeCardViews.forEach { $0.removeFromSuperview() }
+        placeCardViews.removeAll()
+        placeCardViewDisposeBags.removeAll()
+
+        // 새로운 CardView들 생성
+        for folderData in folders {
+            let placeCardView = BookCardView()
+            let cardDisposeBag = DisposeBag()
+
+            placeCardView.configure(with: folderData)
+
+            // 폴더 카드 탭 이벤트 바인딩
+            placeCardView.onFolderTapped = { [weak self, folderData] in
+                print("장소 폴더 카드 탭됨: \(folderData.title)")
+                self?.folderTappedSubject.onNext(folderData)
+            }
+
+            // 메뉴 버튼 이벤트 바인딩
+            placeCardView.menuButton.rx.tap
+                .do(onNext: { _ in
+                    print("장소 폴더 메뉴 버튼 탭됨: \(folderData.title)")
+                })
+                .map { [folderData] _ in folderData }
+                .bind(to: folderMenuTappedSubject)
+                .disposed(by: cardDisposeBag)
+
+            // 컬렉션뷰 데이터 바인딩 (장소 목록 - 현재는 빈 배열)
+            placeCardView.booksCollectionView.dataSource = nil
+            Observable.just(folderData.books)  // 추후 장소 데이터로 변경 예정
+                .bind(to: placeCardView.booksCollectionView.rx.items(
+                    cellIdentifier: BookCoverCell.reuseIdentifier,
+                    cellType: BookCoverCell.self
+                )) { (itemIndex: Int, item: Item, cell: BookCoverCell) in
+                    cell.configure(with: item)
+                }
+                .disposed(by: cardDisposeBag)
+
+            placeCardViews.append(placeCardView)
+            placeCardViewDisposeBags.append(cardDisposeBag)
+            myPlacesView.foldersStackView.addArrangedSubview(placeCardView)
+
+            // 높이 제약 설정
+            placeCardView.snp.makeConstraints {
+                $0.height.equalTo(BookCardView.estimatedHeight())
+            }
+        }
+    }
+
     private func setupBindings() {
         let input = LibraryViewModel.Input(
             viewWillAppear: viewWillAppearSubject.asObservable(),
-            segmentChanged: Observable.just(0), // 항상 내 서재(0)로 고정
+            segmentChanged: segmentedControl.rx.selectedSegmentIndex.asObservable(), // 세그먼트 변경 이벤트 바인딩
             addButtonTapped: addButton.rx.tap.asObservable(),
             folderMenuTapped: folderMenuTappedSubject.asObservable(),
             folderTapped: folderTappedSubject.asObservable(),
@@ -219,12 +306,22 @@ extension LibraryViewController: DesignProtocol {
 
         let output = viewModel.transform(input)
 
-        // 폴더들 업데이트
-        output.folders
-            .drive(with: self) { owner, folders in
+        // 폴더들 업데이트 (세그먼트에 따라 다르게 처리)
+        Observable.combineLatest(
+            output.folders.asObservable(),
+            output.selectedSegment.asObservable()
+        )
+        .bind(with: self) { owner, data in
+            let (folders, segmentIndex) = data
+            if segmentIndex == 0 {
+                // 내 서재: 도서 폴더 표시
                 owner.createBookCardViews(with: folders)
+            } else {
+                // 내 장소: 장소 폴더 표시
+                owner.createPlaceCardViews(with: folders)
             }
-            .disposed(by: disposeBag)
+        }
+        .disposed(by: disposeBag)
 
         // 책 상세화면으로 이동
         output.navigateToBookDetail
@@ -237,10 +334,10 @@ extension LibraryViewController: DesignProtocol {
 
         // 폴더 상세화면으로 이동
         output.navigateToFolderDetail
-            .drive(onNext: { [weak self] folderData in
+            .drive(with: self) { owner, folderData in
                 let folderDetailVC = FolderDetailViewController(folderData: folderData)
-                self?.navigationController?.pushViewController(folderDetailVC, animated: true)
-            })
+                owner.navigationController?.pushViewController(folderDetailVC, animated: true)
+            }
             .disposed(by: disposeBag)
 
         // 폴더 메뉴 표시
@@ -261,15 +358,13 @@ extension LibraryViewController: DesignProtocol {
             }
             .disposed(by: disposeBag)
 
-        // TODO: 추후 업데이트 시 재적용 - 세그먼트 컨트롤
-//        output.selectedSegment
-//            .drive(with: self) { owner, index in
-//                print("세그먼트 선택: \(index)")
-//                let indexTitle = index == 0 ? "내 서재" : "내 장소"
-//                self.titleLabel.text = indexTitle
-//                // TODO: 내 서재 / 내 장소 전환 로직
-//            }
-//            .disposed(by: disposeBag)
+        // 세그먼트 변경 시 뷰 전환
+        output.selectedSegment
+            .drive(with: self) { owner, index in
+                print("세그먼트 선택: \(index)")
+                owner.switchView(to: index)
+            }
+            .disposed(by: disposeBag)
     }
 
     // MARK: - Helper Methods
