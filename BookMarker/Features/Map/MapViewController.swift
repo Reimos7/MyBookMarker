@@ -11,6 +11,7 @@ import SnapKit
 import Then
 import RxSwift
 import RxCocoa
+import SafariServices
 
 final class MapViewController: UIViewController {
 
@@ -158,6 +159,7 @@ final class MapViewController: UIViewController {
 
     private func setupCollectionView() {
         placeCollectionView.delegate = self
+        mapView.delegate = self
     }
 
     private func setupLayout() {
@@ -302,13 +304,16 @@ final class MapViewController: UIViewController {
                     guard let lat = place.latitude, let lon = place.longitude else {
                         return
                     }
-                    
-                    // 마커(Annotation) 생성
-                    let annotation = MKPointAnnotation()
-                    annotation.coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-                    annotation.title = place.placeName
-                    annotation.subtitle = place.simpleCategory
-                    
+
+                    // 커스텀 Annotation 생성 (placeUrl 포함)
+                    let annotation = PlaceAnnotation(
+                        coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                        title: place.placeName,
+                        subtitle: place.simpleCategory,
+                        placeUrl: place.placeUrl,
+                        placeId: place.id
+                    )
+
                     // 지도에 마커 추가
                     owner.mapView.addAnnotation(annotation)
                 }
@@ -383,5 +388,71 @@ extension MapViewController: UICollectionViewDelegateFlowLayout {
         let cellWidth = screenWidth - 24
 
         return CGSize(width: cellWidth, height: 140)
+    }
+}
+
+// MARK: - MKMapViewDelegate
+
+// 지도 Annotation(마커) 클릭 이벤트 처리
+extension MapViewController: MKMapViewDelegate {
+
+    // Annotation이 선택되었을 때 호출 (마커 클릭)
+    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+        // 사용자 현재 위치 마커는 무시
+        guard let annotation = view.annotation,
+              !(annotation is MKUserLocation) else {
+            return
+        }
+
+        // 커스텀 PlaceAnnotation인지 확인
+        guard let placeAnnotation = annotation as? PlaceAnnotation else {
+            print("PlaceAnnotation이 아닌 마커 클릭")
+            return
+        }
+
+        // placeUrl을 URL로 변환
+        guard let url = URL(string: placeAnnotation.placeUrl) else {
+            print("유효하지 않은 URL: \(placeAnnotation.placeUrl)")
+            view.makeToast("링크를 열 수 없습니다")
+            return
+        }
+
+        // SFSafariViewController로 카카오맵 페이지 열기
+        let safariVC = SFSafariViewController(url: url)
+        safariVC.modalPresentationStyle = .pageSheet
+
+        // iOS 15+에서 sheet 높이 조정
+        if let sheet = safariVC.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]  // 중간/전체 높이 선택 가능
+            sheet.prefersGrabberVisible = true     // 상단 핸들 표시
+        }
+
+        present(safariVC, animated: true)
+
+        print("카카오맵 페이지 열기: \(placeAnnotation.title ?? "")")
+    }
+
+    // Annotation View 커스터마이징 (선택사항 - 기본 핀 모양 사용)
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        // 사용자 위치는 기본 스타일 사용
+        guard !(annotation is MKUserLocation) else {
+            return nil
+        }
+
+        let identifier = "PlacePin"
+        var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+
+        if annotationView == nil {
+            annotationView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+            annotationView?.canShowCallout = true  // 말풍선 표시
+        } else {
+            annotationView?.annotation = annotation
+        }
+
+        // 마커 색상 설정 (카테고리별로 다르게 할 수도 있음)
+        annotationView?.markerTintColor = .systemTeal
+        annotationView?.glyphImage = UIImage(systemName: "book.fill")  // 책 아이콘
+
+        return annotationView
     }
 }
