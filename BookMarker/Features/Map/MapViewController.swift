@@ -119,6 +119,7 @@ final class MapViewController: UIViewController {
     private let disposeBag = DisposeBag()
 
     private let categorySelectedSubject = PublishSubject<KakaoPlaceCategory>()
+    private let pinSelectedSubject = PublishSubject<String>()  // 핀 선택 이벤트 (장소 ID)
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -203,7 +204,10 @@ final class MapViewController: UIViewController {
             currentLocationTapped: currentLocationButton.rx.tap.asObservable(),
 
             // 컬렉션뷰 셀 선택
-            placeSelected: placeCollectionView.rx.itemSelected.asObservable()
+            placeSelected: placeCollectionView.rx.itemSelected.asObservable(),
+
+            // 핀 선택 (지도 마커 클릭)
+            pinSelected: pinSelectedSubject.asObservable()
         )
 
         let output = viewModel.transform(input)
@@ -410,6 +414,9 @@ extension MapViewController: MKMapViewDelegate {
             return
         }
 
+        //  핀 선택 이벤트 방출 (컬렉션뷰 필터링용)
+        pinSelectedSubject.onNext(placeAnnotation.placeId)
+
         // placeUrl을 URL로 변환
         guard let url = URL(string: placeAnnotation.placeUrl) else {
             print("유효하지 않은 URL: \(placeAnnotation.placeUrl)")
@@ -429,7 +436,7 @@ extension MapViewController: MKMapViewDelegate {
 
         present(safariVC, animated: true)
 
-        print("카카오맵 페이지 열기: \(placeAnnotation.title ?? "")")
+        print("핀 클릭: \(placeAnnotation.title ?? ""), ID: \(placeAnnotation.placeId)")
     }
 
     // Annotation View 커스터마이징 (선택사항 - 기본 핀 모양 사용)

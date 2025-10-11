@@ -20,6 +20,8 @@ final class MapViewModel: BaseViewModel {
         let currentLocationTapped: Observable<Void>
         // 장소 셀 선택 (컬렉션뷰)
         let placeSelected: Observable<IndexPath>
+        // 핀 선택 (지도에서 마커 클릭)
+        let pinSelected: Observable<String>  // 장소 ID
     }
     
     struct Output {
@@ -60,6 +62,7 @@ final class MapViewModel: BaseViewModel {
     func transform(_ input: Input) -> Output {
 
         let placesRelay = BehaviorRelay<[KakaoPlace]>(value: [])           // 장소 목록
+        let fullPlacesRelay = BehaviorRelay<[KakaoPlace]>(value: [])       // 전체 장소 목록 (필터링 전)
         let isLoadingRelay = BehaviorRelay<Bool>(value: false)            // 로딩 상태
         let errorMessageRelay = PublishRelay<String>()                    // 에러 메시지
         let selectedCategoryRelay = BehaviorRelay<KakaoPlaceCategory>(value: .all)  // 선택된 카테고리
@@ -117,19 +120,32 @@ final class MapViewModel: BaseViewModel {
                 )
                 .catch { _ in .just([]) }  // 에러 시 빈 배열
             }
-            .subscribe(onNext: { places in
-                // 검색 결과를 Relay로 전달
+            .bind(with: self) { owner, places in
+                // 검색 결과를 전체 목록과 현재 목록 모두에 저장
+                fullPlacesRelay.accept(places)
                 placesRelay.accept(places)
-            })
+            }
             .disposed(by: disposeBag)
 
         // MARK: - 현재 위치 버튼 탭 시 처리
         input.currentLocationTapped
             .withLatestFrom(currentLocationRelay)
-            .subscribe(onNext: { location in
+            .bind(with: self) { owner, location in
                 // 현재 위치를 다시 방출 (지도 중심 이동용)
                 currentLocationRelay.accept(location)
-            })
+            }
+            .disposed(by: disposeBag)
+
+        // MARK: - 핀 선택 시 처리 (지도 마커 클릭)
+        input.pinSelected
+            .withLatestFrom(fullPlacesRelay) { placeId, allPlaces in
+                // 전체 목록에서 해당 ID의 장소만 필터링
+                return allPlaces.filter { $0.id == placeId }
+            }
+            .bind(with: self) { owner, filteredPlaces in
+                // 필터링된 장소(1개)만 컬렉션뷰에 표시
+                placesRelay.accept(filteredPlaces)
+            }
             .disposed(by: disposeBag)
 
         // MARK: - 장소 셀 선택 시 처리
