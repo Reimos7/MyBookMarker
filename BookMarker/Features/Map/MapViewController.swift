@@ -12,6 +12,7 @@ import Then
 import RxSwift
 import RxCocoa
 import SafariServices
+import Toast
 
 final class MapViewController: UIViewController {
 
@@ -121,6 +122,11 @@ final class MapViewController: UIViewController {
     private let categorySelectedSubject = PublishSubject<KakaoPlaceCategory>()
     private let pinSelectedSubject = PublishSubject<String>()  // 핀 선택 이벤트 (장소 ID)
 
+    // 하트 버튼 관련 Subject
+    private let favoriteTappedSubject = PublishSubject<(KakaoPlace, Int)>()
+    private let folderSelectedSubject = PublishSubject<(KakaoPlace, FolderRealmModel, Int)>()
+    private let deleteConfirmedSubject = PublishSubject<(KakaoPlace, Int)>()
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -131,7 +137,6 @@ final class MapViewController: UIViewController {
         bindViewModel()
     }
 
-    // MARK: - Setup
     private func setupNavigationBar() {
         navigationItem.title = "장소"
 
@@ -207,7 +212,16 @@ final class MapViewController: UIViewController {
             placeSelected: placeCollectionView.rx.itemSelected.asObservable(),
 
             // 핀 선택 (지도 마커 클릭)
-            pinSelected: pinSelectedSubject.asObservable()
+            pinSelected: pinSelectedSubject.asObservable(),
+
+            // 하트 버튼 탭
+            favoriteTapped: favoriteTappedSubject.asObservable(),
+
+            // 폴더 선택 완료
+            folderSelected: folderSelectedSubject.asObservable(),
+
+            // 삭제 확인 완료
+            deleteConfirmed: deleteConfirmedSubject.asObservable()
         )
 
         let output = viewModel.transform(input)
@@ -217,7 +231,9 @@ final class MapViewController: UIViewController {
             .drive(placeCollectionView.rx.items(
                 cellIdentifier: MapPlaceCell.reuseIdentifier,
                 cellType: MapPlaceCell.self
-            )) { index, place, cell in
+            )) { [weak self] (index: Int, place: KakaoPlace, cell: MapPlaceCell) in
+                guard let self = self else { return }
+
                 cell.configure(
                     name: place.placeName,
                     category: place.simpleCategory,
@@ -226,6 +242,25 @@ final class MapViewController: UIViewController {
                     address: place.addressName,
                     description: place.roadAddressName
                 )
+
+                // 초기 하트 상태 설정 (장소가 저장되어 있는지 확인)
+                do {
+                    let placeRepository = PlaceRepository()
+                    let existingPlace = try placeRepository.getPlace(
+                        byName: place.placeName,
+                        address: place.addressName
+                    )
+                    cell.setFavoriteState(existingPlace != nil)
+                } catch {
+                    print("하트 상태 확인 실패: \(error)")
+                    cell.setFavoriteState(false)
+                }
+
+                // 하트 버튼 탭 이벤트 연결
+                cell.favoriteButton.rx.tap
+                    .map { (place, index) }
+                    .bind(to: self.favoriteTappedSubject)
+                    .disposed(by: cell.disposeBag)
             }
             .disposed(by: disposeBag)
 
@@ -334,6 +369,41 @@ final class MapViewController: UIViewController {
             }
             .disposed(by: disposeBag)
 
+        // 토스트 메시지 표시
+        output.showToast
+            .drive(with: self) { owner, message in
+                owner.view.makeToast(message, duration: 2.0, position: .bottom)
+            }
+            .disposed(by: disposeBag)
+
+        // 폴더 선택 Alert 표시
+        output.showFolderSelection
+            .drive(with: self) { owner, tuple in
+                let (place, index) = tuple
+                owner.showFolderSelectionAlert(for: place, at: index)
+            }
+            .disposed(by: disposeBag)
+
+        // 삭제 확인 Alert 표시
+        output.showDeleteConfirmation
+            .drive(with: self) { owner, tuple in
+                let (place, index) = tuple
+                owner.showDeleteConfirmationAlert(for: place, at: index)
+            }
+            .disposed(by: disposeBag)
+
+        // 하트 상태 업데이트
+        output.updateFavoriteState
+            .drive(with: self) { owner, tuple in
+                let (index, isFavorite) = tuple
+                // 해당 인덱스의 셀을 찾아서 하트 상태 업데이트
+                let indexPath = IndexPath(row: index, section: 0)
+                if let cell = owner.placeCollectionView.cellForItem(at: indexPath) as? MapPlaceCell {
+                    cell.setFavoriteState(isFavorite)
+                }
+            }
+            .disposed(by: disposeBag)
+
         // MARK: 필터 버튼 탭 이벤트 바인딩
 
         // 전체 버튼 탭
@@ -376,6 +446,79 @@ final class MapViewController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.categorySelectedSubject.onNext(.all)
         }
+    }
+
+    // 폴더 선택 커스텀 뷰 표시
+    private func showFolderSelectionAlert(for place: KakaoPlace, at index: Int) {
+        guard let window = view.window else { return }
+
+        // FolderSelectionView 생성 (장소용)
+        let folderSelectionView = FolderSelectionView(placeTitle: place.placeName)
+        let folderSelectionVM = FolderSelectionViewModel(folderType: .place)
+
+        // Input 설정
+        let input = FolderSelectionViewModel.Input(
+            viewDidLoad: Observable.just(()),
+            folderSelected: folderSelectionView.folderSelected.asObservable(),
+            createFolderTapped: folderSelectionView.createFolderTapped.asObservable()
+        )
+
+        let output = folderSelectionVM.transform(input)
+
+        // 폴더 목록 바인딩
+        folderSelectionView.bind(folders: output.folders.asObservable())
+
+        // 폴더 선택 이벤트
+        output.selectedFolder
+            .drive(onNext: { [weak self] selectedFolder in
+                guard let self = self else { return }
+                folderSelectionView.hide()
+
+                // 폴더 선택 Subject로 전달
+                self.folderSelectedSubject.onNext((place, selectedFolder, index))
+            })
+            .disposed(by: disposeBag)
+
+        // 새 폴더 만들기 (추후 구현)
+        output.showCreateFolder
+            .drive(onNext: { [weak self] _ in
+                guard let self = self else { return }
+                folderSelectionView.hide()
+                print("새 장소 폴더 만들기 화면으로 이동")
+                // TODO: 새 폴더 만들기 화면
+            })
+            .disposed(by: disposeBag)
+
+        // 닫기 이벤트
+        folderSelectionView.closeTapped
+            .asDriver(onErrorDriveWith: .empty())
+            .drive(onNext: { _ in
+                folderSelectionView.hide()
+            })
+            .disposed(by: disposeBag)
+
+        // 화면에 표시
+        folderSelectionView.show(in: window)
+    }
+
+    /// 삭제 확인 Alert 표시
+    private func showDeleteConfirmationAlert(for place: KakaoPlace, at index: Int) {
+        let alert = UIAlertController(
+            title: "장소 제거",
+            message: "\(place.placeName)을(를) 내 장소에서 제거하시겠습니까?",
+            preferredStyle: .alert
+        )
+
+        // 삭제 버튼
+        alert.addAction(UIAlertAction(title: "제거", style: .destructive) { [weak self] _ in
+            // 삭제 확인 시 Subject로 전달
+            self?.deleteConfirmedSubject.onNext((place, index))
+        })
+
+        // 취소 버튼
+        alert.addAction(UIAlertAction(title: "취소", style: .cancel))
+
+        present(alert, animated: true)
     }
 }
 

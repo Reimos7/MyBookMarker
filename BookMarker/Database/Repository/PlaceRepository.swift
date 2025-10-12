@@ -8,7 +8,7 @@
 import Foundation
 import RealmSwift
 
-/// 장소 데이터 관리를 위한 Repository
+// 장소 데이터 관리를 위한 Repository
 final class PlaceRepository {
 
     private let realmManager: RealmManager
@@ -17,9 +17,7 @@ final class PlaceRepository {
         self.realmManager = realmManager
     }
 
-    // MARK: - Create
-
-    /// 장소 추가
+    // 장소 추가
     func addPlace(_ place: PlaceRealmModel) throws {
         let realm = try realmManager.getRealm()
         try realm.write {
@@ -27,7 +25,33 @@ final class PlaceRepository {
         }
     }
 
-    /// 폴더에 장소 추가
+    // 장소 추가 + 폴더에 등록 (한 번에 처리)
+    // - Parameters:
+    //   - place: 추가할 장소
+    //   - folderId: 폴더 ID
+    // - Returns: 추가된 장소 모델
+    func addPlaceAndAddToFolder(_ place: PlaceRealmModel, folderId: ObjectId) throws -> PlaceRealmModel {
+        let realm = try realmManager.getRealm()
+
+        guard let folder = realm.object(ofType: FolderRealmModel.self, forPrimaryKey: folderId) else {
+            throw NSError(domain: "PlaceRepository", code: 404, userInfo: [
+                NSLocalizedDescriptionKey: "폴더를 찾을 수 없습니다."
+            ])
+        }
+
+        try realm.write {
+            // 1. 장소 추가
+            realm.add(place)
+            // 2. 폴더에 장소 연결
+            folder.places.append(place)
+            // 3. 폴더 수정일 갱신
+            folder.updateModificationDate()
+        }
+
+        return place
+    }
+
+    // 폴더에 장소 추가
     func addPlaceToFolder(placeId: ObjectId, folderId: ObjectId) throws {
         let realm = try realmManager.getRealm()
 
@@ -45,7 +69,7 @@ final class PlaceRepository {
 
     // MARK: - Read
 
-    /// 모든 장소 조회
+    // 모든 장소 조회
     func getAllPlaces() throws -> [PlaceRealmModel] {
         let realm = try realmManager.getRealm()
         let results = realm.objects(PlaceRealmModel.self)
@@ -53,7 +77,7 @@ final class PlaceRepository {
         return Array(results)
     }
 
-    /// 특정 폴더의 장소 조회
+    // 특정 폴더의 장소 조회
     func getPlaces(in folderId: ObjectId) throws -> [PlaceRealmModel] {
         let realm = try realmManager.getRealm()
 
@@ -66,13 +90,25 @@ final class PlaceRepository {
         return Array(folder.places)
     }
 
-    /// ID로 장소 조회
+    // ID로 장소 조회
     func getPlace(byId id: ObjectId) throws -> PlaceRealmModel? {
         let realm = try realmManager.getRealm()
         return realm.object(ofType: PlaceRealmModel.self, forPrimaryKey: id)
     }
 
-    /// 카테고리별 장소 조회
+    // 장소명과 주소로 장소 조회 (중복 확인용)
+    // - Parameters:
+    //   - name: 장소명
+    //   - address: 주소
+    // - Returns: 일치하는 장소 (없으면 nil)
+    func getPlace(byName name: String, address: String) throws -> PlaceRealmModel? {
+        let realm = try realmManager.getRealm()
+        return realm.objects(PlaceRealmModel.self)
+            .filter("name == %@ AND address == %@", name, address)
+            .first
+    }
+
+    // 카테고리별 장소 조회
     func getPlaces(byCategory category: PlaceCategory) throws -> [PlaceRealmModel] {
         let realm = try realmManager.getRealm()
         return Array(realm.objects(PlaceRealmModel.self)
@@ -82,7 +118,7 @@ final class PlaceRepository {
 
     // MARK: - Update
 
-    /// 장소 평점 업데이트
+    // 장소 평점 업데이트
     func updatePlaceRating(id: ObjectId, rating: Double) throws {
         let realm = try realmManager.getRealm()
 
@@ -102,7 +138,7 @@ final class PlaceRepository {
 
     // MARK: - Delete
 
-    /// 장소 삭제
+    // 장소 삭제
     func deletePlace(id: ObjectId) throws {
         let realm = try realmManager.getRealm()
 
@@ -117,7 +153,7 @@ final class PlaceRepository {
         }
     }
 
-    /// 폴더에서 장소 제거 (장소는 유지)
+    // 폴더에서 장소 제거 (장소는 유지)
     func removePlaceFromFolder(placeId: ObjectId, folderId: ObjectId) throws {
         let realm = try realmManager.getRealm()
 
@@ -134,4 +170,35 @@ final class PlaceRepository {
             }
         }
     }
+
+    // 폴더에서 장소 제거 + 완전 삭제 (다른 폴더에도 없으면 삭제)
+    // - Parameters:
+    //   - placeId: 장소 ID
+    //   - folderId: 폴더 ID
+    func removePlaceFromFolderAndDelete(placeId: ObjectId, folderId: ObjectId) throws {
+        let realm = try realmManager.getRealm()
+
+        guard let place = realm.object(ofType: PlaceRealmModel.self, forPrimaryKey: placeId),
+              let folder = realm.object(ofType: FolderRealmModel.self, forPrimaryKey: folderId) else {
+            throw NSError(domain: "PlaceRepository", code: 404, userInfo: [
+                NSLocalizedDescriptionKey: "장소 또는 폴더를 찾을 수 없습니다."
+            ])
+        }
+
+        try realm.write {
+            // 1. 폴더에서 장소 제거
+            if let index = folder.places.index(of: place) {
+                folder.places.remove(at: index)
+            }
+
+            // 2. 다른 폴더에도 속하지 않으면 완전 삭제
+            if place.folders.isEmpty {
+                realm.delete(place)
+            }
+
+            // 3. 폴더 수정일 갱신
+            folder.updateModificationDate()
+        }
+    }
 }
+

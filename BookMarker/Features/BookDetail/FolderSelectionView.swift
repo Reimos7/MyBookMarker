@@ -11,54 +11,51 @@ import Then
 import RxSwift
 import RxCocoa
 
-/// 폴더 선택 커스텀 Alert View
+// 폴더 선택 커스텀 Alert View
 final class FolderSelectionView: UIView {
 
-    // MARK: - UI Components
-
-    /// 배경 딤 뷰
     private let dimmedView = UIView().then {
         $0.backgroundColor = UIColor.black.withAlphaComponent(0.5)
     }
 
-    /// 컨테이너 뷰
+    // 컨테이너 뷰
     private let containerView = UIView().then {
         $0.backgroundColor = .systemBackground
         $0.layer.cornerRadius = 16
         $0.clipsToBounds = true
     }
 
-    /// 닫기 버튼
+    // 닫기 버튼
     private let closeButton = UIButton().then {
         $0.setImage(UIImage(systemName: "xmark"), for: .normal)
         $0.tintColor = .systemGray
     }
 
-    /// 타이틀 레이블
+    // 타이틀 레이블
     private let titleLabel = UILabel().then {
         $0.text = "폴더 선택"
         $0.font = .systemFont(ofSize: 18, weight: .bold)
         $0.textColor = .label
     }
 
-    /// 서브 타이틀 레이블 (도서 제목)
+    // 서브 타이틀 레이블 (도서 제목)
     private let subtitleLabel = UILabel().then {
         $0.font = .systemFont(ofSize: 14, weight: .regular)
         $0.textColor = .systemGray
         $0.numberOfLines = 2
     }
 
-    /// 폴더 목록 CollectionView
+    // 폴더 목록 CollectionView
     private lazy var collectionView = UICollectionView(
         frame: .zero,
         collectionViewLayout: createLayout()
     ).then {
         $0.backgroundColor = .clear
-        $0.register(FolderSelectionCell.self, forCellWithReuseIdentifier: FolderSelectionCell.identifier)
+        $0.register(FolderSelectionCell.self, forCellWithReuseIdentifier: FolderSelectionCell.reuseIdentifier)
         $0.showsVerticalScrollIndicator = true
     }
 
-    /// 새 폴더 만들기 버튼
+    // 새 폴더 만들기 버튼
     private let createFolderButton = UIButton().then {
         $0.setTitle("+ 새 폴더 만들기", for: .normal)
         $0.setTitleColor(.systemGray, for: .normal)
@@ -71,20 +68,16 @@ final class FolderSelectionView: UIView {
         $0.isHidden = true
     }
 
-    // MARK: - Properties
-
     private let disposeBag = DisposeBag()
 
-    /// 폴더 선택 이벤트
+    // 폴더 선택 이벤트
     let folderSelected = PublishSubject<FolderRealmModel>()
 
-    /// 새 폴더 만들기 이벤트
+    // 새 폴더 만들기 이벤트
     let createFolderTapped = PublishSubject<Void>()
 
-    /// 닫기 이벤트
+    // 닫기 이벤트
     let closeTapped = PublishSubject<Void>()
-
-    // MARK: - Initializer
 
     init(bookTitle: String) {
         super.init(frame: .zero)
@@ -93,23 +86,26 @@ final class FolderSelectionView: UIView {
         bindActions()
     }
 
+    init(placeTitle: String) {
+        super.init(frame: .zero)
+        subtitleLabel.text = "\"\(placeTitle)\"을(를) 저장할 폴더를 선택하세요"
+        setupUI()
+        bindActions()
+    }
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-
-    // MARK: - Setup
 
     private func setupUI() {
         backgroundColor = .clear
 
         addSubview(dimmedView)
         addSubview(containerView)
-
-        containerView.addSubview(closeButton)
-        containerView.addSubview(titleLabel)
-        containerView.addSubview(subtitleLabel)
-        containerView.addSubview(collectionView)
-        containerView.addSubview(createFolderButton)
+        
+        [closeButton,titleLabel,subtitleLabel,collectionView,createFolderButton].forEach {
+            containerView.addSubview($0)
+        }
 
         dimmedView.snp.makeConstraints {
             $0.edges.equalToSuperview()
@@ -192,11 +188,11 @@ final class FolderSelectionView: UIView {
 
     // MARK: - Public Methods
 
-    /// 폴더 데이터 바인딩
+    // 폴더 데이터 바인딩
     func bind(folders: Observable<[FolderRealmModel]>) {
         folders
             .bind(to: collectionView.rx.items(
-                cellIdentifier: FolderSelectionCell.identifier,
+                cellIdentifier: FolderSelectionCell.reuseIdentifier,
                 cellType: FolderSelectionCell.self
             )) { index, folder, cell in
                 cell.configure(with: folder)
@@ -209,7 +205,7 @@ final class FolderSelectionView: UIView {
             .disposed(by: disposeBag)
     }
 
-    /// 애니메이션과 함께 표시
+    // 애니메이션과 함께 표시
     func show(in view: UIView) {
         view.addSubview(self)
         self.snp.makeConstraints {
@@ -227,7 +223,7 @@ final class FolderSelectionView: UIView {
         }
     }
 
-    /// 애니메이션과 함께 숨김
+    // 애니메이션과 함께 숨김
     func hide(completion: (() -> Void)? = nil) {
         UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseIn, animations: {
             self.alpha = 0

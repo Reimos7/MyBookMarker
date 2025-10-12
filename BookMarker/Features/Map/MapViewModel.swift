@@ -22,8 +22,14 @@ final class MapViewModel: BaseViewModel {
         let placeSelected: Observable<IndexPath>
         // 핀 선택 (지도에서 마커 클릭)
         let pinSelected: Observable<String>  // 장소 ID
+        // 하트 버튼 탭 (장소 저장/삭제)
+        let favoriteTapped: Observable<(KakaoPlace, Int)>  // (장소, 인덱스)
+        // 폴더 선택 후 저장 확정
+        let folderSelected: Observable<(KakaoPlace, FolderRealmModel, Int)>
+        // 삭제 확인 후 실제 삭제
+        let deleteConfirmed: Observable<(KakaoPlace, Int)>
     }
-    
+
     struct Output {
         // 장소 목록 (컬렉션뷰에 바인딩)
         let places: Driver<[KakaoPlace]>
@@ -42,21 +48,39 @@ final class MapViewModel: BaseViewModel {
 
         // 선택된 장소 (상세 화면 이동용)
         let selectedPlace: Driver<KakaoPlace>
+
+        // 토스트 메시지 ("내 장소에 추가되었습니다" 등)
+        let showToast: Driver<String>
+
+        // 폴더 선택 Alert 표시
+        let showFolderSelection: Driver<(KakaoPlace, Int)>
+
+        // 삭제 확인 Alert 표시
+        let showDeleteConfirmation: Driver<(KakaoPlace, Int)>
+
+        // 하트 상태 업데이트 (인덱스, 채워짐 여부)
+        let updateFavoriteState: Driver<(Int, Bool)>
     }
 
     // 의존성 주입
     private let kakaoLocalService: KakaoLocalService
     private let locationManager: LocationManager
-    
+    private let placeRepository: PlaceRepository
+    private let folderRepository: FolderRepository
+
     private let disposeBag = DisposeBag()
 
     // 이니셜라이저 (의존성 주입)
     init(
         kakaoLocalService: KakaoLocalService = .shared,
-        locationManager: LocationManager = .shared
+        locationManager: LocationManager = .shared,
+        placeRepository: PlaceRepository = PlaceRepository(),
+        folderRepository: FolderRepository = FolderRepository()
     ) {
         self.kakaoLocalService = kakaoLocalService
         self.locationManager = locationManager
+        self.placeRepository = placeRepository
+        self.folderRepository = folderRepository
     }
 
     func transform(_ input: Input) -> Output {
@@ -67,6 +91,12 @@ final class MapViewModel: BaseViewModel {
         let errorMessageRelay = PublishRelay<String>()                    // 에러 메시지
         let selectedCategoryRelay = BehaviorRelay<KakaoPlaceCategory>(value: .all)  // 선택된 카테고리
         let currentLocationRelay = PublishRelay<CLLocation>()             // 현재 위치
+
+        // 하트 버튼 관련 Relay
+        let toastMessageRelay = PublishRelay<String>()                    // 토스트 메시지
+        let showFolderSelectionRelay = PublishRelay<(KakaoPlace, Int)>()  // 폴더 선택 Alert
+        let showDeleteConfirmationRelay = PublishRelay<(KakaoPlace, Int)>()  // 삭제 확인 Alert
+        let updateFavoriteStateRelay = PublishRelay<(Int, Bool)>()        // 하트 상태 업데이트
 
         // MARK: - 뷰 로드 시 초기 설정
         input.viewDidLoad
@@ -156,13 +186,123 @@ final class MapViewModel: BaseViewModel {
             }
             .asDriver(onErrorDriveWith: .empty())
 
+        // MARK: - 하트 버튼 탭 처리 (장소 저장/삭제)
+        input.favoriteTapped
+            .subscribe(onNext: { [weak self] (place, index) in
+                guard let self = self else { return }
+
+                do {
+                    // 1. 장소가 이미 저장되어 있는지 확인
+                    let existingPlace = try self.placeRepository.getPlace(
+                        byName: place.placeName,
+                        address: place.addressName
+                    )
+
+                    if existingPlace == nil {
+                        // 저장되지 않은 장소 → 저장 처리
+
+                        // 2. 사용자가 만든 장소 폴더 개수 확인
+                        let allFolders = try self.folderRepository.getAllFolders(type: .place)
+                        let userFolders = allFolders.filter { !$0.isBasic }
+
+                        if userFolders.isEmpty {
+                            // 사용자 폴더 없음 → 기본 폴더에 자동 저장
+                            if let defaultFolder = try self.folderRepository.getBasicFolder(type: .place) {
+                                let placeRealmModel = PlaceMapper.toRealmModel(from: place)
+                                _ = try self.placeRepository.addPlaceAndAddToFolder(
+                                    placeRealmModel,
+                                    folderId: defaultFolder.id
+                                )
+                                print("장소가 기본 폴더에 저장되었습니다: \(placeRealmModel.name)")
+
+                                updateFavoriteStateRelay.accept((index, true))
+                                toastMessageRelay.accept("내 장소에 추가되었습니다.")
+                            }
+                        } else {
+                            // 사용자 폴더 있음 → 폴더 선택 Alert 표시
+                            showFolderSelectionRelay.accept((place, index))
+                        }
+                    } else {
+                        // 이미 저장된 장소 → 삭제 확인 Alert 표시
+                        showDeleteConfirmationRelay.accept((place, index))
+                    }
+                } catch {
+                    print("하트 버튼 처리 실패: \(error)")
+                    toastMessageRelay.accept("오류가 발생했습니다.")
+                }
+            })
+            .disposed(by: disposeBag)
+
+        // MARK: - 폴더 선택 후 저장 처리
+        input.folderSelected
+            .subscribe(onNext: { [weak self] (place, folder, index) in
+                guard let self = self else { return }
+
+                do {
+                    // 장소가 이미 저장되어 있는지 다시 확인
+                    if try self.placeRepository.getPlace(byName: place.placeName, address: place.addressName) == nil {
+                        let placeRealmModel = PlaceMapper.toRealmModel(from: place)
+                        _ = try self.placeRepository.addPlaceAndAddToFolder(
+                            placeRealmModel,
+                            folderId: folder.id
+                        )
+                        print("장소가 \(folder.name ?? "폴더")에 저장되었습니다: \(placeRealmModel.name)")
+                        updateFavoriteStateRelay.accept((index, true))
+                        toastMessageRelay.accept("\(folder.name ?? "폴더")에 추가되었습니다.")
+                    } else {
+                        toastMessageRelay.accept("이미 추가된 장소입니다.")
+                    }
+                } catch {
+                    print("폴더에 장소 추가 실패: \(error)")
+                    toastMessageRelay.accept("오류가 발생했습니다.")
+                }
+            })
+            .disposed(by: disposeBag)
+
+        // MARK: - 삭제 확인 후 실제 삭제 처리
+        input.deleteConfirmed
+            .subscribe(onNext: { [weak self] (place, index) in
+                guard let self = self else { return }
+
+                do {
+                    // 삭제할 장소 찾기
+                    guard let existingPlace = try self.placeRepository.getPlace(
+                        byName: place.placeName,
+                        address: place.addressName
+                    ) else {
+                        toastMessageRelay.accept("장소를 찾을 수 없습니다.")
+                        return
+                    }
+
+                    // 해당 장소가 속한 모든 폴더에서 제거
+                    let folders = Array(existingPlace.folders)
+                    for folder in folders {
+                        try self.placeRepository.removePlaceFromFolderAndDelete(
+                            placeId: existingPlace.id,
+                            folderId: folder.id
+                        )
+                    }
+
+                    updateFavoriteStateRelay.accept((index, false))
+                    toastMessageRelay.accept("내 장소에서 제거되었습니다.")
+                } catch {
+                    print("장소 삭제 실패: \(error)")
+                    toastMessageRelay.accept("오류가 발생했습니다.")
+                }
+            })
+            .disposed(by: disposeBag)
+
         return Output(
             places: placesRelay.asDriver(),
             currentLocation: currentLocationRelay.asDriver(onErrorDriveWith: .empty()),
             isLoading: isLoadingRelay.asDriver(),
             errorMessage: errorMessageRelay.asDriver(onErrorDriveWith: .empty()),
             selectedCategory: selectedCategoryRelay.asDriver(),
-            selectedPlace: selectedPlace
+            selectedPlace: selectedPlace,
+            showToast: toastMessageRelay.asDriver(onErrorDriveWith: .empty()),
+            showFolderSelection: showFolderSelectionRelay.asDriver(onErrorDriveWith: .empty()),
+            showDeleteConfirmation: showDeleteConfirmationRelay.asDriver(onErrorDriveWith: .empty()),
+            updateFavoriteState: updateFavoriteStateRelay.asDriver(onErrorDriveWith: .empty())
         )
     }
 

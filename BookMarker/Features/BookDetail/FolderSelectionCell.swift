@@ -9,14 +9,10 @@ import UIKit
 import SnapKit
 import Then
 
-/// 폴더 선택 셀
+// 폴더 선택 셀
 final class FolderSelectionCell: UICollectionViewCell {
 
-    static let identifier = "FolderSelectionCell"
-
-    // MARK: - UI Components
-
-    /// 컨테이너 뷰
+    // 컨테이너 뷰
     private let containerView = UIView().then {
         $0.layer.cornerRadius = 12
         $0.layer.borderWidth = 1.5
@@ -24,44 +20,44 @@ final class FolderSelectionCell: UICollectionViewCell {
         $0.backgroundColor = .systemBackground
     }
 
-    /// 아이콘 컨테이너 뷰
+    // 아이콘 컨테이너 뷰
     private let iconContainerView = UIView().then {
         $0.layer.cornerRadius = 8
         $0.clipsToBounds = true
     }
 
-    /// 아이콘 이미지뷰
+    // 아이콘 이미지뷰
     private let iconImageView = UIImageView().then {
         $0.contentMode = .scaleAspectFit
         $0.tintColor = .white
     }
 
-    /// 폴더 이름 레이블
+    // 폴더 이름 레이블
     private let nameLabel = UILabel().then {
         $0.font = .systemFont(ofSize: 16, weight: .semibold)
         $0.textColor = .label
     }
 
-    /// 폴더 태그 레이블 (기본 등)
+    // 폴더 태그 레이블 (기본 등)
     private let tagLabel = UILabel().then {
         $0.font = .systemFont(ofSize: 12, weight: .medium)
         $0.textColor = .systemGray
     }
 
-    /// 폴더 설명 레이블
+    // 폴더 설명 레이블
     private let descriptionLabel = UILabel().then {
         $0.font = .systemFont(ofSize: 13, weight: .regular)
         $0.textColor = .systemGray2
         $0.numberOfLines = 1
     }
 
-    /// 도서 개수 레이블
+    // 도서 개수 레이블
     private let countLabel = UILabel().then {
         $0.font = .systemFont(ofSize: 13, weight: .regular)
         $0.textColor = .systemGray
     }
 
-    /// 체크 아이콘
+    // 체크 아이콘
     private let checkImageView = UIImageView().then {
         $0.image = UIImage(systemName: "checkmark")
         $0.contentMode = .scaleAspectFit
@@ -69,14 +65,12 @@ final class FolderSelectionCell: UICollectionViewCell {
         $0.isHidden = true
     }
 
-    /// 오른쪽 화살표 아이콘
+    // 오른쪽 화살표 아이콘
     private let arrowImageView = UIImageView().then {
         $0.image = UIImage(systemName: "chevron.right")
         $0.contentMode = .scaleAspectFit
         $0.tintColor = .systemGray3
     }
-
-    // MARK: - Initializer
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -87,20 +81,15 @@ final class FolderSelectionCell: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
-    // MARK: - Setup
-
     private func setupUI() {
         contentView.addSubview(containerView)
 
         containerView.addSubview(iconContainerView)
         iconContainerView.addSubview(iconImageView)
-
-        containerView.addSubview(nameLabel)
-        containerView.addSubview(tagLabel)
-        containerView.addSubview(descriptionLabel)
-        containerView.addSubview(countLabel)
-        containerView.addSubview(checkImageView)
-        containerView.addSubview(arrowImageView)
+        
+        [nameLabel,tagLabel,descriptionLabel,countLabel,checkImageView,arrowImageView].forEach {
+            containerView.addSubview($0)
+        }
 
         containerView.snp.makeConstraints {
             $0.edges.equalToSuperview()
@@ -161,8 +150,15 @@ final class FolderSelectionCell: UICollectionViewCell {
         tagLabel.text = folder.isBasic ? "기본" : ""
         tagLabel.isHidden = !folder.isBasic
 
-        // 설명
-        descriptionLabel.text = folder.folderDescription ?? "기본으로 생성된 폴더입니다."
+        // 설명 (기본 폴더: 설명 / 사용자 폴더: 생성 날짜)
+        if folder.isBasic {
+            descriptionLabel.text = folder.folderDescription ?? "기본으로 생성된 폴더입니다."
+        } else {
+            // 사용자가 만든 폴더는 생성 날짜 표시
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy.MM.dd 생성"
+            descriptionLabel.text = dateFormatter.string(from: folder.createdDate)
+        }
 
         // 도서 개수
         countLabel.text = "\(folder.itemCount)개"
@@ -219,14 +215,12 @@ final class FolderSelectionCell: UICollectionViewCell {
         iconImageView.image = UIImage(systemName: iconName)
     }
 
-    /// 선택 상태 표시
+    // 선택 상태 표시
     func setSelected(_ selected: Bool) {
         checkImageView.isHidden = !selected
         arrowImageView.isHidden = selected
     }
 }
-
-// MARK: - UIColor Hex Extension
 
 extension UIColor {
     convenience init?(hex: String) {

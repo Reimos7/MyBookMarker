@@ -26,15 +26,20 @@ final class FolderSelectionViewModel: BaseViewModel {
 
     private let folderRepository = FolderRepository()
     private let disposeBag = DisposeBag()
+    private let folderType: FolderType
+
+    init(folderType: FolderType = .book) {
+        self.folderType = folderType
+    }
 
     func transform(_ input: Input) -> Output {
-        // 폴더 목록 조회 (도서 폴더만)
+        // 폴더 목록 조회 (타입에 따라)
         let folders = input.viewDidLoad
             .flatMap { [weak self] _ -> Observable<[FolderRealmModel]> in
                 guard let self = self else { return .just([]) }
 
                 do {
-                    let allFolders = try self.folderRepository.getAllFolders(type: .book)
+                    let allFolders = try self.folderRepository.getAllFolders(type: self.folderType)
                     // 기본 폴더를 맨 위로 정렬
                     let sorted = allFolders.sorted { folder1, folder2 in
                         if folder1.isBasic && !folder2.isBasic {

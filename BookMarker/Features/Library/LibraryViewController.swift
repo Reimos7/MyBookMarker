@@ -10,6 +10,7 @@ import SnapKit
 import Then
 import RxSwift
 import RxCocoa
+import RealmSwift
 
 final class LibraryViewController: UIViewController {
 
@@ -186,7 +187,7 @@ extension LibraryViewController: DesignProtocol {
         }
     }
 
-    /// 내 서재 폴더 카드 생성 (도서 폴더)
+    // 내 서재 폴더 카드 생성 (도서 폴더)
     private func createBookCardViews(with folders: [BookCardView.FolderBookData]) {
         // 기존 뷰들과 disposeBag들 제거
         bookCardViews.forEach { $0.removeFromSuperview() }
@@ -243,18 +244,27 @@ extension LibraryViewController: DesignProtocol {
         }
     }
 
-    /// 내 장소 폴더 카드 생성 (장소 폴더)
+    // 내 장소 폴더 카드 생성 (장소 폴더)
     private func createPlaceCardViews(with folders: [BookCardView.FolderBookData]) {
         // 기존 뷰들과 disposeBag들 제거
         placeCardViews.forEach { $0.removeFromSuperview() }
         placeCardViews.removeAll()
         placeCardViewDisposeBags.removeAll()
 
+        let placeRepository = PlaceRepository()
+
         // 새로운 CardView들 생성
         for folderData in folders {
             let placeCardView = BookCardView()
             let cardDisposeBag = DisposeBag()
 
+            // PlaceCoverCell 등록
+            placeCardView.booksCollectionView.register(
+                PlaceCoverCell.self,
+                forCellWithReuseIdentifier: PlaceCoverCell.reuseIdentifier
+            )
+
+            // 폴더 데이터 설정
             placeCardView.configure(with: folderData)
 
             // 폴더 카드 탭 이벤트 바인딩
@@ -272,16 +282,46 @@ extension LibraryViewController: DesignProtocol {
                 .bind(to: folderMenuTappedSubject)
                 .disposed(by: cardDisposeBag)
 
-            // 컬렉션뷰 데이터 바인딩 (장소 목록 - 현재는 빈 배열)
-            placeCardView.booksCollectionView.dataSource = nil
-            Observable.just(folderData.books)  // 추후 장소 데이터로 변경 예정
-                .bind(to: placeCardView.booksCollectionView.rx.items(
-                    cellIdentifier: BookCoverCell.reuseIdentifier,
-                    cellType: BookCoverCell.self
-                )) { (itemIndex: Int, item: Item, cell: BookCoverCell) in
-                    cell.configure(with: item)
+            // 해당 폴더의 실제 장소 데이터 가져오기
+            do {
+                // String id를 ObjectId로 변환
+                guard let objectId = try? ObjectId(string: folderData.id) else {
+                    print("Invalid ObjectId: \(folderData.id)")
+                    continue
                 }
-                .disposed(by: cardDisposeBag)
+                let places = try placeRepository.getPlaces(in: objectId)
+
+                // 컬렉션뷰 데이터 바인딩 (장소 목록)
+                placeCardView.booksCollectionView.dataSource = nil
+                Observable.just(places)
+                    .bind(to: placeCardView.booksCollectionView.rx.items(
+                        cellIdentifier: PlaceCoverCell.reuseIdentifier,
+                        cellType: PlaceCoverCell.self
+                    )) { (itemIndex: Int, place: PlaceRealmModel, cell: PlaceCoverCell) in
+                        cell.configure(with: place)
+                    }
+                    .disposed(by: cardDisposeBag)
+
+                // 장소 탭 이벤트 (추후 구현)
+                placeCardView.booksCollectionView.rx.modelSelected(PlaceRealmModel.self)
+                    .subscribe(onNext: { place in
+                        print("장소 선택됨: \(place.name ?? "이름없음")")
+                        // TODO: 장소 상세 화면 이동
+                    })
+                    .disposed(by: cardDisposeBag)
+
+            } catch {
+                print("장소 데이터 로드 실패: \(error)")
+                // 빈 배열 바인딩
+                Observable.just([PlaceRealmModel]())
+                    .bind(to: placeCardView.booksCollectionView.rx.items(
+                        cellIdentifier: PlaceCoverCell.reuseIdentifier,
+                        cellType: PlaceCoverCell.self
+                    )) { (itemIndex: Int, place: PlaceRealmModel, cell: PlaceCoverCell) in
+                        cell.configure(with: place)
+                    }
+                    .disposed(by: cardDisposeBag)
+            }
 
             placeCardViews.append(placeCardView)
             placeCardViewDisposeBags.append(cardDisposeBag)

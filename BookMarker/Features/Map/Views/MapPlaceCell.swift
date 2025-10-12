@@ -8,8 +8,11 @@
 import UIKit
 import SnapKit
 import Then
+import RxSwift
 
 final class MapPlaceCell: BaseCollectionViewCell {
+
+    var disposeBag = DisposeBag()
 
     private let containerView = UIView().then {
         $0.backgroundColor = .white
@@ -73,26 +76,25 @@ final class MapPlaceCell: BaseCollectionViewCell {
         $0.numberOfLines = 1
     }
 
-    private let favoriteButton = UIButton().then {
+    // 하트 버튼 (외부에서 접근 가능하도록 internal)
+    let favoriteButton = UIButton().then {
         $0.setImage(UIImage(systemName: "heart"), for: .normal)
         $0.setImage(UIImage(systemName: "heart.fill"), for: .selected)
         $0.tintColor = .systemPink
     }
 
-    // MARK: - BaseCollectionViewCell Methods
-
-    /// 14. 계층 구조 설정
+    // 계층 구조 설정
     override func configureHierarchy() {
         contentView.backgroundColor = .clear
         contentView.addSubview(containerView)
 
-        // 14-1. containerView에 모든 UI 요소 추가
+        // containerView에 모든 UI 요소 추가
         [placeImageView, nameLabel, infoStackView, addressLabel,
          descriptionLabel, favoriteButton].forEach {
             containerView.addSubview($0)
         }
 
-        // 14-2. infoStackView에 정보 레이블들 추가
+        // infoStackView에 정보 레이블들 추가
         [categoryIconLabel, categoryLabel, starIconLabel,
          ratingLabel, distanceLabel].forEach {
             infoStackView.addArrangedSubview($0)
@@ -141,8 +143,6 @@ final class MapPlaceCell: BaseCollectionViewCell {
         }
     }
 
-    // MARK: - Configure
-
     func configure(name: String, category: String, rating: Double, distance: String, address: String, description: String) {
         nameLabel.text = name
 
@@ -182,8 +182,20 @@ final class MapPlaceCell: BaseCollectionViewCell {
 
         descriptionLabel.text = description
 
-        // 이미지는 일단 기본 배경색으로 
+        // 이미지는 일단 기본 배경색으로
         placeImageView.image = nil
         placeImageView.backgroundColor = .systemGray5
+    }
+
+    // 하트 버튼 상태 설정
+    // - Parameter isFavorite: 즐겨찾기 여부 (true: 채워진 하트, false: 빈 하트)
+    func setFavoriteState(_ isFavorite: Bool) {
+        favoriteButton.isSelected = isFavorite
+    }
+
+    // 셀 재사용 준비 (구독 해제)
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        disposeBag = DisposeBag()  // 이전 구독 모두 해제
     }
 }
