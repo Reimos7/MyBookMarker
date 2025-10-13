@@ -1,6 +1,11 @@
 MyTamagotchi.xcodeproj/# Created by https://www.toptal.com/developers/gitignore/api/swift
 # Edit at https://www.toptal.com/developers/gitignore?templates=swift
- 
+
+# Google Service File
+
+GoogleService-Info1.plist
+GoogleService-Info2.plist
+
 **/*.xcconfig 
 **/API.swift
 
