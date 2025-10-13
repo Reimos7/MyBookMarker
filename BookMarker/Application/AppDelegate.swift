@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import FirebaseCore
 import IQKeyboardManagerSwift
 
 @main
@@ -21,6 +22,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Realm 데이터베이스 초기화
         setupDatabase()
+        // 앱이 처음 실행될때 연결 되어 있어야하기 때문에 AppDelegate에 사용 
+        FirebaseApp.configure()
 
         return true
     }
