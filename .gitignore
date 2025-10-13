@@ -5,6 +5,8 @@ MyTamagotchi.xcodeproj/# Created by https://www.toptal.com/developers/gitignore/
 
 GoogleService-Info1.plist
 GoogleService-Info2.plist
+BookMarker/GoogleService-Info1.plist
+BookMarker/GoogleService-Info2.plist
 
 **/*.xcconfig 
 **/API.swift
