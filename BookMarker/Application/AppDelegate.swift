@@ -99,11 +99,54 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                               didReceive response: UNNotificationResponse,
                               withCompletionHandler completionHandler: @escaping () -> Void) {
-        // 푸시 알림 탭 처리 로직
         let userInfo = response.notification.request.content.userInfo
-        print("Push notification tapped: \(userInfo)")
+        print("========================================")
+        print("Push notification tapped!")
+        print("Full userInfo: \(userInfo)")
+        print("========================================")
+
+        // FCM 데이터 검증 및 처리
+        handlePushNotification(userInfo: userInfo)
 
         completionHandler()
+    }
+
+    // MARK: - Push Notification Handler
+
+    private func handlePushNotification(userInfo: [AnyHashable: Any]) {
+        // guard let을 사용한 early return 패턴
+        guard let type = userInfo["type"] as? String else {
+            print(" type not found in userInfo")
+            return
+        }
+        print("type found: \(type)")
+
+        guard type == "book_detail" else {
+            print("type is not book_detail: \(type)")
+            return
+        }
+        print("type is book_detail")
+
+        guard let isbn = userInfo["isbn"] as? String else {
+            print("isbn not found in userInfo")
+            return
+        }
+        print("isbn found: \(isbn)")
+
+        guard let title = userInfo["title"] as? String else {
+            print("title not found in userInfo")
+            return
+        }
+        print("title found: \(title)")
+
+        // 모든 검증 통과 SceneDelegate로 전달
+        print("Posting notification to SceneDelegate...")
+        
+        NotificationCenter.default.post(
+            name: Notification.Name("OpenBookDetail"),
+            object: nil,
+            userInfo: userInfo
+        )
     }
 }
 
