@@ -82,6 +82,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
     }
 
+    // MARK: - Remote Notifications
+
+    // APNS 토큰을 받으면 Firebase에 전달
+    func application(_ application: UIApplication,
+                    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        print("APNS device token received")
+
+        // APNS 토큰을 Firebase에 전달
+        Messaging.messaging().apnsToken = deviceToken
+
+        print("APNS token set to Firebase")
+    }
+
+    // APNS 등록 실패 시 호출
+    func application(_ application: UIApplication,
+                    didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("Failed to register for remote notifications: \(error)")
+    }
 
 
 }

@@ -9,7 +9,7 @@ import UIKit
 
 enum TabbarType: CaseIterable {
     case map
-    case realMap
+   // case realMap
     case home
     case my
     
@@ -18,8 +18,8 @@ enum TabbarType: CaseIterable {
         case .map:
             return SearchViewController()
             //return ViewController()
-        case .realMap:
-            return MapViewController()
+      //  case .realMap:
+        //    return MapViewController()
         case .home:
             return HomeViewController()
         case .my:
@@ -31,8 +31,8 @@ enum TabbarType: CaseIterable {
         switch self {
         case .map:
             return "magnifyingglass"
-        case .realMap:
-            return "map.fill"
+     //   case .realMap:
+      //      return "map.fill"
         case .home:
             return "house.fill"
         case .my:
@@ -44,12 +44,12 @@ enum TabbarType: CaseIterable {
         switch self {
         case .map:
             return 0
-        case .realMap:
-            return 1
+      //  case .realMap:
+      //      return 1
         case .home:
-            return 2
+            return 1
         case .my:
-            return 3
+            return 2
         }
     }
     
@@ -57,8 +57,8 @@ enum TabbarType: CaseIterable {
         switch self {
         case .map:
             return ""
-        case .realMap:
-            return ""
+       // case .realMap:
+        //    return ""
         case .home:
             return ""
         case .my:
