@@ -1,4 +1,4 @@
-MyTamagotchi.xcodeproj/# Created by https://www.toptal.com/developers/gitignore/api/swift
+# Created by https://www.toptal.com/developers/gitignore/api/swift
 # Edit at https://www.toptal.com/developers/gitignore?templates=swift
 
 # Google Service File
@@ -22,6 +22,10 @@ BookMarker/GoogleService-Info2.plist
 
 ## User settings
 xcuserdata/
+
+
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
 
 ## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
 *.xcscmblueprint
@@ -96,8 +100,7 @@ fastlane/test_output
 # Code Injection
 # After new code Injection tools there's a generated folder /iOSInjectionProject
 # https://github.com/johnno1962/injectionforxcode
-MyTamagotchi.xcodeproj/
-MyTamagotchi.xcodeproj/project.xcworkspace/xcshareddata/
+
 iOSInjectionProject/
 
 # End of https://www.toptal.com/developers/gitignore/api/swift
