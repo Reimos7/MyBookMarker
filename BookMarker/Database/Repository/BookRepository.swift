@@ -82,6 +82,21 @@ final class BookRepository {
 
     // MARK: - Update
 
+    /// 도서의 장소 ID 업데이트
+    func updateBookPlaceId(id: ObjectId, placeId: String?) throws {
+        let realm = try realmManager.getRealm()
+
+        guard let book = realm.object(ofType: BookRealmModel.self, forPrimaryKey: id) else {
+            throw NSError(domain: "BookRepository", code: 404, userInfo: [
+                NSLocalizedDescriptionKey: "도서를 찾을 수 없습니다."
+            ])
+        }
+
+        try realm.write {
+            book.placeId = placeId
+        }
+    }
+
     /// 도서 평점 업데이트
     func updateBookRating(id: ObjectId, rating: Double) throws {
         let realm = try realmManager.getRealm()

@@ -373,24 +373,22 @@ extension LibraryViewController: DesignProtocol {
             .disposed(by: disposeBag)
 
         // 폴더 상세화면으로 이동 (세그먼트에 따라 분기)
-        Observable.combineLatest(
-            output.navigateToFolderDetail.asObservable(),
-            output.selectedSegment.asObservable()
-        )
-        .subscribe(onNext: { [weak self] folderData, segmentIndex in
-            guard let self = self else { return }
+        output.navigateToFolderDetail.asObservable()
+            .withLatestFrom(output.selectedSegment.asObservable()) { ($0, $1) }
+            .subscribe(onNext: { [weak self] folderData, segmentIndex in
+                guard let self = self else { return }
 
-            if segmentIndex == 0 {
-                // 내 서재: 도서 폴더 상세
-                let folderDetailVC = FolderDetailViewController(folderData: folderData)
-                self.navigationController?.pushViewController(folderDetailVC, animated: true)
-            } else {
-                // 내 장소: 장소 폴더 상세
-                let placeFolderDetailVC = PlaceFolderDetailViewController(folderData: folderData)
-                self.navigationController?.pushViewController(placeFolderDetailVC, animated: true)
-            }
-        })
-        .disposed(by: disposeBag)
+                if segmentIndex == 0 {
+                    // 내 서재: 도서 폴더 상세
+                    let folderDetailVC = FolderDetailViewController(folderData: folderData)
+                    self.navigationController?.pushViewController(folderDetailVC, animated: true)
+                } else {
+                    // 내 장소: 장소 폴더 상세
+                    let placeFolderDetailVC = PlaceFolderDetailViewController(folderData: folderData)
+                    self.navigationController?.pushViewController(placeFolderDetailVC, animated: true)
+                }
+            })
+            .disposed(by: disposeBag)
 
         // 폴더 메뉴 표시
         output.showFolderMenu

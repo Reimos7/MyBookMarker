@@ -140,9 +140,9 @@ extension PlaceFolderDetailViewController: DesignProtocol {
         // 셀 선택 이벤트
         collectionView.rx.modelSelected(PlaceRealmModel.self)
             .bind(with: self) { owner, place in
-                print("장소 선택됨: \(place.name ?? "이름없음")")
-                // TODO: 장소 상세 화면으로 이동 (추후 구현)
-                owner.view.makeToast("장소 상세 화면은 추후 구현 예정입니다.")
+                print("장소 선택됨: \(place.name)")
+                let detailVC = PlaceDetailViewController(place: place)
+                owner.navigationController?.pushViewController(detailVC, animated: true)
             }
             .disposed(by: disposeBag)
     }
