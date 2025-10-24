@@ -78,23 +78,15 @@ final class PlaceDetailViewController: UIViewController {
     // 책 컬렉션뷰
     private let booksCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .vertical
-
-        // 2열 그리드
-        let screenWidth = UIScreen.main.bounds.width
-        let spacing: CGFloat = 16
-        let itemWidth = (screenWidth - (spacing * 3)) / 2
-
-        layout.itemSize = CGSize(width: itemWidth, height: itemWidth * 1.5)
-        layout.minimumLineSpacing = spacing
-        layout.minimumInteritemSpacing = spacing
-        layout.sectionInset = UIEdgeInsets(top: 0, left: 16, bottom: 16, right: 16)
+        layout.scrollDirection = .horizontal
+        layout.itemSize = CGSize(width: 140, height: 220)
+        layout.minimumLineSpacing = 16
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
 
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
-        collectionView.register(BookCoverCell.self, forCellWithReuseIdentifier: BookCoverCell.reuseIdentifier)
-        collectionView.showsVerticalScrollIndicator = false
-        collectionView.backgroundColor = .systemBackground
-        collectionView.isScrollEnabled = false
+        collectionView.register(NewBookCell.self, forCellWithReuseIdentifier: NewBookCell.reuseIdentifier)
+        collectionView.showsHorizontalScrollIndicator = false
+        collectionView.backgroundColor = .clear
         return collectionView
     }()
 
@@ -304,7 +296,7 @@ extension PlaceDetailViewController: DesignProtocol {
         booksCollectionView.snp.makeConstraints {
             $0.top.equalTo(booksSectionHeaderView.snp.bottom)
             $0.leading.trailing.equalToSuperview()
-            $0.height.equalTo(100) // 초기값, 동적으로 변경됨
+            $0.height.equalTo(220)
         }
 
         emptyBookLabel.snp.makeConstraints {
@@ -335,24 +327,9 @@ extension PlaceDetailViewController: DesignProtocol {
 
         // 책 목록 바인딩
         output.books
-            .do(onNext: { [weak self] books in
-                // 컬렉션뷰 높이 동적 조정
-                guard let self = self else { return }
-                let itemsPerRow: CGFloat = 2
-                let rows = ceil(CGFloat(books.count) / itemsPerRow)
-                let screenWidth = UIScreen.main.bounds.width
-                let spacing: CGFloat = 16
-                let itemWidth = (screenWidth - (spacing * 3)) / 2
-                let itemHeight = itemWidth * 1.5
-                let totalHeight = (rows * itemHeight) + ((rows - 1) * spacing)
-
-                self.booksCollectionView.snp.updateConstraints {
-                    $0.height.equalTo(max(totalHeight, 100))
-                }
-            })
             .drive(booksCollectionView.rx.items(
-                cellIdentifier: BookCoverCell.reuseIdentifier,
-                cellType: BookCoverCell.self
+                cellIdentifier: NewBookCell.reuseIdentifier,
+                cellType: NewBookCell.self
             )) { (index, book, cell) in
                 cell.configure(with: book)
             }
