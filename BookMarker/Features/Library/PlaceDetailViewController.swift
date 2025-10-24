@@ -347,8 +347,7 @@ extension PlaceDetailViewController: DesignProtocol {
         // 책 선택 이벤트
         booksCollectionView.rx.modelSelected(Item.self)
             .bind(with: self) { owner, book in
-                let detailVC = BookDetailViewController(book: book)
-                owner.navigationController?.pushViewController(detailVC, animated: true)
+                owner.handleBookSelection(book: book)
             }
             .disposed(by: disposeBag)
 
@@ -377,6 +376,48 @@ extension PlaceDetailViewController: DesignProtocol {
         print("DEBUG: present 직전")
         present(navController, animated: true) {
             print("DEBUG: present 완료")
+        }
+    }
+
+    /// 책 선택 처리: 독서 일기 유무에 따라 다른 화면으로 이동
+    private func handleBookSelection(book: Item) {
+        print("DEBUG: handleBookSelection 호출 - \(book.title)")
+
+        // ISBN13으로 Realm에서 책 찾기
+        guard let isbn13 = book.isbn13 else {
+            print("DEBUG: ISBN13이 없음")
+            return
+        }
+
+        do {
+            let bookRepository = BookRepository()
+
+            // Realm에서 책 조회
+            if let savedBook = try bookRepository.getBook(byISBN: isbn13) {
+                print("DEBUG: Realm에서 책 찾음 - hasDiary: \(savedBook.hasDiary)")
+
+                // 독서 일기가 있으면 → BookReviewViewController (독서 카드 보기)
+                if savedBook.hasDiary {
+                    print("DEBUG: BookReviewViewController로 이동")
+                    let reviewVC = BookReviewViewController(bookId: savedBook.id)
+                    navigationController?.pushViewController(reviewVC, animated: true)
+                } else {
+                    // 독서 일기가 없으면 → BookDiaryViewController (독서 일기 작성)
+                    print("DEBUG: BookDiaryViewController로 이동")
+                    let diaryVC = BookDiaryViewController(book: book)
+                    navigationController?.pushViewController(diaryVC, animated: true)
+                }
+            } else {
+                print("DEBUG: Realm에 책이 없음 - BookDiaryViewController로 이동")
+                // Realm에 책이 없으면 독서 일기 작성 화면으로
+                let diaryVC = BookDiaryViewController(book: book)
+                navigationController?.pushViewController(diaryVC, animated: true)
+            }
+        } catch {
+            print("DEBUG: 책 조회 실패 - \(error)")
+            // 에러 발생 시 독서 일기 작성 화면으로
+            let diaryVC = BookDiaryViewController(book: book)
+            navigationController?.pushViewController(diaryVC, animated: true)
         }
     }
 }
