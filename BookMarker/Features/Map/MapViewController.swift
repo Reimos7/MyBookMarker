@@ -234,6 +234,9 @@ final class MapViewController: UIViewController {
             )) { [weak self] (index: Int, place: KakaoPlace, cell: MapPlaceCell) in
                 guard let self = self else { return }
 
+                // 디버그: 카테고리 값 출력
+                print("장소: \(place.placeName), 카테고리: \(place.simpleCategory), 그룹코드: \(place.categoryGroupCode)")
+
                 cell.configure(
                     name: place.placeName,
                     category: place.simpleCategory,

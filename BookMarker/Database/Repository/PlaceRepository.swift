@@ -200,5 +200,25 @@ final class PlaceRepository {
             folder.updateModificationDate()
         }
     }
+
+    // MARK: - Update Image
+
+    /// 장소의 이미지 URL 업데이트
+    /// - Parameters:
+    ///   - placeId: 장소 ID
+    ///   - imageURL: 이미지 URL 또는 로컬 파일명
+    func updatePlaceImage(placeId: ObjectId, imageURL: String?) throws {
+        let realm = try realmManager.getRealm()
+
+        guard let place = realm.object(ofType: PlaceRealmModel.self, forPrimaryKey: placeId) else {
+            throw NSError(domain: "PlaceRepository", code: 404, userInfo: [
+                NSLocalizedDescriptionKey: "장소를 찾을 수 없습니다."
+            ])
+        }
+
+        try realm.write {
+            place.imageURL = imageURL
+        }
+    }
 }
 

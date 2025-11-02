@@ -20,10 +20,11 @@ final class MapPlaceCell: BaseCollectionViewCell {
     }
 
     private let placeImageView = UIImageView().then {
-        $0.contentMode = .scaleAspectFill
+        $0.contentMode = .scaleAspectFit
         $0.clipsToBounds = true
         $0.layer.cornerRadius = 8
-        $0.backgroundColor = .systemGray5
+        $0.backgroundColor = .systemGray6
+        $0.tintColor = .systemGray
     }
     
     private let nameLabel = UILabel().then {
@@ -182,9 +183,31 @@ final class MapPlaceCell: BaseCollectionViewCell {
 
         descriptionLabel.text = description
 
-        // 이미지는 일단 기본 배경색으로
-        placeImageView.image = nil
-        placeImageView.backgroundColor = .systemGray5
+        // 카테고리별 SFSymbol 아이콘 설정
+        configurePlaceIcon(category: category)
+    }
+
+    private func configurePlaceIcon(category: String) {
+        let iconName: String
+
+        // 카테고리 문자열을 소문자로 변환하여 유연하게 매칭
+        let lowercasedCategory = category.lowercased()
+
+        // 주의: "스터디카페"가 "카페"를 포함하므로 스터디카페를 먼저 체크해야 함
+        if lowercasedCategory.contains("스터디") || lowercasedCategory.contains("study") {
+            iconName = "laptopcomputer"
+        } else if lowercasedCategory.contains("도서관") || lowercasedCategory.contains("library") {
+            iconName = "books.vertical.fill"
+        } else if lowercasedCategory.contains("카페") {
+            iconName = "cup.and.saucer"
+        } else {
+            // 기본 아이콘
+            iconName = "mappin.circle"
+        }
+
+        let config = UIImage.SymbolConfiguration(pointSize: 50, weight: .light)
+        placeImageView.image = UIImage(systemName: iconName, withConfiguration: config)
+        placeImageView.tintColor = .systemGray
     }
 
     // 하트 버튼 상태 설정

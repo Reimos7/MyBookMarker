@@ -54,19 +54,47 @@ final class PlaceGridCell: UICollectionViewCell {
         nameLabel.text = place.name ?? "장소 이름 없음"
         addressLabel.text = place.address ?? "주소 정보 없음"
 
-        // 이미지 로드
-        if let imageURLString = place.imageURL, let imageURL = URL(string: imageURLString) {
-            imageView.kf.setImage(
-                with: imageURL,
-                placeholder: UIImage(systemName: "photo"),
-                options: [
-                    .transition(.fade(0.2)),
-                    .cacheOriginalImage
-                ]
-            )
-        } else {
+        // 이미지 로드 (웹 URL vs 로컬 파일 구분)
+        loadPlaceImage(imageURL: place.imageURL)
+    }
+
+    private func loadPlaceImage(imageURL: String?) {
+        // 이미지 초기화
+        imageView.image = nil
+        imageView.kf.cancelDownloadTask()
+
+        guard let imageURL = imageURL, !imageURL.isEmpty else {
+            // 이미지 URL이 없으면 기본 아이콘
             imageView.image = UIImage(systemName: "photo")
             imageView.tintColor = .systemGray3
+            return
+        }
+
+        // 웹 URL 확인 (http:// 또는 https://로 시작)
+        if imageURL.hasPrefix("http://") || imageURL.hasPrefix("https://") {
+            // 웹 URL → Kingfisher로 로드
+            if let url = URL(string: imageURL) {
+                imageView.kf.setImage(
+                    with: url,
+                    placeholder: UIImage(systemName: "photo"),
+                    options: [
+                        .transition(.fade(0.2)),
+                        .cacheOriginalImage
+                    ]
+                )
+            } else {
+                imageView.image = UIImage(systemName: "photo")
+                imageView.tintColor = .systemGray3
+            }
+        } else {
+            // 로컬 파일 → ImageManager로 로드
+            if let image = ImageManager.shared.loadImage(fileName: imageURL) {
+                imageView.image = image
+                imageView.tintColor = nil
+            } else {
+                imageView.image = UIImage(systemName: "photo")
+                imageView.tintColor = .systemGray3
+            }
         }
     }
 }
