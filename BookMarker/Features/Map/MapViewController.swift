@@ -141,14 +141,14 @@ final class MapViewController: UIViewController {
         navigationItem.title = "장소"
 
         // 장소 추가 버튼 (현재는 동작 안 함, 추후 구현)
-        let addButton = UIBarButtonItem(
-            image: UIImage(systemName: "plus"),
-            style: .plain,
-            target: self,
-            action: nil
-        )
-        addButton.tintColor = .black
-        navigationItem.rightBarButtonItem = addButton
+//        let addButton = UIBarButtonItem(
+//            image: UIImage(systemName: "plus"),
+//            style: .plain,
+//            target: self,
+//            action: nil
+//        )
+//        addButton.tintColor = .black
+//        navigationItem.rightBarButtonItem = addButton
     }
 
     private func setupUI() {

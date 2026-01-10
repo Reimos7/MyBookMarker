@@ -196,18 +196,19 @@ final class HomeViewController: UIViewController {
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: titleLabel)
         navigationController?.navigationBar.tintColor = .black
         navigationItem.backButtonTitle = ""
+
         // 검색 버튼 설정
-//        let searchButton = UIBarButtonItem(
-//            image: UIImage(systemName: "magnifyingglass"),
-//            style: .plain,
-//            target: nil,
-//            action: nil
-//        )
-//        searchButton.tintColor = .black
-//        navigationItem.rightBarButtonItem = searchButton
+        let searchButton = UIBarButtonItem(
+            image: UIImage(systemName: "magnifyingglass"),
+            style: .plain,
+            target: nil,
+            action: nil
+        )
+        searchButton.tintColor = .black
+        navigationItem.rightBarButtonItem = searchButton
 
         // 검색 버튼 탭 이벤트를 위해 참조 저장
-      //  self.navigationSearchButton = searchButton
+        self.navigationSearchButton = searchButton
     }
 
     private func checkAndHandleInfiniteScroll() {

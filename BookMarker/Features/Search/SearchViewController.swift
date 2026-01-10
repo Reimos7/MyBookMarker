@@ -68,12 +68,12 @@ final class SearchViewController: UIViewController {
     }
 
     private func setupNavigationBar() {
-        title = ""
+        title = "검색"
         navigationController?.navigationBar.tintColor = .black
+        navigationItem.backButtonTitle = ""
 
-        // 탭바에서 진입하므로 백버튼 숨김
-        navigationItem.leftBarButtonItem = nil
-        navigationItem.hidesBackButton = true
+        // 뒤로가기 버튼 표시
+        navigationItem.hidesBackButton = false
     }
 
 //    @objc private func searchButtonTapped() {
@@ -215,18 +215,18 @@ extension SearchViewController: DesiginProtocolBind {
 
     func configureLayout() {
         searchBar.snp.makeConstraints {
-            $0.top.equalTo(view.safeAreaLayoutGuide).offset(16)
+            $0.top.equalTo(view.safeAreaLayoutGuide).offset(4)
             $0.horizontalEdges.equalToSuperview().inset(16)
             $0.height.equalTo(44)
         }
 
         resultCountLabel.snp.makeConstraints {
-            $0.top.equalTo(searchBar.snp.bottom).offset(16)
+            $0.top.equalTo(searchBar.snp.bottom).offset(8)
             $0.leading.equalToSuperview().offset(16)
         }
 
         collectionView.snp.makeConstraints {
-            $0.top.equalTo(resultCountLabel.snp.bottom).offset(12)
+            $0.top.equalTo(resultCountLabel.snp.bottom).offset(8)
             $0.horizontalEdges.equalToSuperview()
             $0.bottom.equalTo(view.safeAreaLayoutGuide)
         }

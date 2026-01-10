@@ -27,7 +27,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
         let tabBarController = UITabBarController()
         tabBarController.viewControllers = controllers
-        tabBarController.selectedIndex = 1 // 홈 화면을 기본으로 설정
+        tabBarController.selectedIndex = 1 // 홈 화면을 기본으로 설정 (검색 탭 제거 후: realMap=0, home=1, my=2)
         tabBarController.tabBar.tintColor = .black
         tabBarController.tabBar.backgroundColor = .white
         window?.rootViewController = tabBarController
