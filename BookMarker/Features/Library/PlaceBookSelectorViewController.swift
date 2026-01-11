@@ -2,7 +2,7 @@
 //  PlaceBookSelectorViewController.swift
 //  BookMarker
 //
-//  Created by Claude on 10/24/25.
+//  Created by Reimos on 10/24/25.
 //
 
 import UIKit

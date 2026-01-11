@@ -2,7 +2,7 @@
 //  PlaceAnnotation.swift
 //  BookMarker
 //
-//  Created by Claude on 10/10/25.
+//  Created by Reimos on 10/10/25.
 //
 
 import MapKit

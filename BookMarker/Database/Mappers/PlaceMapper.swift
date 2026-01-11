@@ -2,7 +2,7 @@
 //  PlaceMapper.swift
 //  BookMarker
 //
-//  Created by Claude on 10/11/25.
+//  Created by Reimos on 10/11/25.
 //
 
 import Foundation

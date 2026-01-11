@@ -2,7 +2,7 @@
 //  BookSelectorViewController.swift
 //  BookMarker
 //
-//  Created by Claude on 10/20/25.
+//  Created by Reimos on 10/20/25.
 //
 
 import UIKit

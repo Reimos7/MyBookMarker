@@ -2,7 +2,7 @@
 //  ImageManager.swift
 //  BookMarker
 //
-//  Created by Claude on 10/27/25.
+//  Created by Reimos on 10/27/25.
 //
 
 import UIKit

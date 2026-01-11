@@ -2,7 +2,7 @@
 //  PlaceFolderDetailViewController.swift
 //  BookMarker
 //
-//  Created by Claude on 1/18/25.
+//  Created by Reimos on 1/18/25.
 //
 
 import UIKit

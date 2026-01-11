@@ -2,7 +2,7 @@
 //  PlaceCoverCell.swift
 //  BookMarker
 //
-//  Created by Claude on 10/12/25.
+//  Created by Reimos on 10/12/25.
 //
 
 import UIKit
