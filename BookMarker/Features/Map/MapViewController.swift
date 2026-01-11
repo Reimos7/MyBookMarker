@@ -119,6 +119,7 @@ final class MapViewController: UIViewController {
 
     private let disposeBag = DisposeBag()
 
+    private let viewWillAppearSubject = PublishSubject<Void>()
     private let categorySelectedSubject = PublishSubject<KakaoPlaceCategory>()
     private let pinSelectedSubject = PublishSubject<String>()  // 핀 선택 이벤트 (장소 ID)
 
@@ -135,6 +136,12 @@ final class MapViewController: UIViewController {
         setupLayout()
         setupCollectionView()
         bindViewModel()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // 화면이 나타날 때마다 이벤트 방출 (설정에서 돌아왔을 때 대응)
+        viewWillAppearSubject.onNext(())
     }
 
     private func setupNavigationBar() {
@@ -203,6 +210,8 @@ final class MapViewController: UIViewController {
     private func bindViewModel() {
         let input = MapViewModel.Input(
             viewDidLoad: Observable.just(()),
+
+            viewWillAppear: viewWillAppearSubject.asObservable(),
 
             categorySelected: categorySelectedSubject.asObservable(),
 
@@ -407,6 +416,13 @@ final class MapViewController: UIViewController {
             }
             .disposed(by: disposeBag)
 
+        // 위치 권한 거부 시 설정 안내 Alert 표시
+        output.locationAuthorizationDenied
+            .drive(with: self) { owner, _ in
+                owner.showLocationPermissionDeniedAlert()
+            }
+            .disposed(by: disposeBag)
+
         // MARK: 필터 버튼 탭 이벤트 바인딩
 
         // 전체 버튼 탭
@@ -445,10 +461,9 @@ final class MapViewController: UIViewController {
 
         // MARK: 초기 카테고리 선택
 
-        //  초기 로드 시 "전체" 카테고리 자동 선택
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.categorySelectedSubject.onNext(.all)
-        }
+        // 초기 로드 시 "전체" 카테고리 즉시 선택
+        // (위치가 획득되면 combineLatest가 자동으로 검색을 트리거함)
+        categorySelectedSubject.onNext(.all)
     }
 
     // 폴더 선택 커스텀 뷰 표시
@@ -516,6 +531,25 @@ final class MapViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "제거", style: .destructive) { [weak self] _ in
             // 삭제 확인 시 Subject로 전달
             self?.deleteConfirmedSubject.onNext((place, index))
+        })
+
+        // 취소 버튼
+        alert.addAction(UIAlertAction(title: "취소", style: .cancel))
+
+        present(alert, animated: true)
+    }
+
+    // 위치 권한 거부 시 설정 안내 Alert 표시
+    private func showLocationPermissionDeniedAlert() {
+        let alert = UIAlertController(
+            title: "위치 권한 필요",
+            message: "장소를 찾기 위해 위치 권한이 필요합니다.\n설정에서 위치 권한을 허용해주세요.",
+            preferredStyle: .alert
+        )
+
+        // 설정으로 이동 버튼
+        alert.addAction(UIAlertAction(title: "설정으로 이동", style: .default) { _ in
+            LocationManager.shared.openAppSettings()
         })
 
         // 취소 버튼

@@ -14,6 +14,7 @@ final class MapViewModel: BaseViewModel {
 
     struct Input {
         let viewDidLoad: Observable<Void>
+        let viewWillAppear: Observable<Void>  // 화면이 나타날 때마다 호출
         // 카테고리 필터 선택 (전체, 카페, 도서관, 스터디카페)
         let categorySelected: Observable<KakaoPlaceCategory>
         // 현재 위치 버튼 탭
@@ -60,6 +61,9 @@ final class MapViewModel: BaseViewModel {
 
         // 하트 상태 업데이트 (인덱스, 채워짐 여부)
         let updateFavoriteState: Driver<(Int, Bool)>
+
+        // 위치 권한 거부 상태 (설정 안내 Alert용)
+        let locationAuthorizationDenied: Driver<Void>
     }
 
     // 의존성 주입
@@ -90,7 +94,9 @@ final class MapViewModel: BaseViewModel {
         let isLoadingRelay = BehaviorRelay<Bool>(value: false)            // 로딩 상태
         let errorMessageRelay = PublishRelay<String>()                    // 에러 메시지
         let selectedCategoryRelay = BehaviorRelay<KakaoPlaceCategory>(value: .all)  // 선택된 카테고리
-        let currentLocationRelay = PublishRelay<CLLocation>()             // 현재 위치
+        // BehaviorRelay로 변경하여 마지막 위치를 유지 (초기값은 임시 좌표)
+        // combineLatest가 트리거되려면 두 Relay 모두 값이 있어야 함
+        let currentLocationRelay = BehaviorRelay<CLLocation?>(value: nil)
 
         // 하트 버튼 관련 Relay
         let toastMessageRelay = PublishRelay<String>()                    // 토스트 메시지
@@ -104,62 +110,140 @@ final class MapViewModel: BaseViewModel {
             .bind(with: self) { owner, _ in
                 // 위치 권한 요청
                 self.locationManager.requestAuthorization()
-                
+
                 // 위치 업데이트 시작
                 self.locationManager.startUpdatingLocation()
             }
             .disposed(by: disposeBag)
 
+        // MARK: - 화면이 나타날 때마다 처리
+        // 설정 앱에서 돌아왔을 때 권한 상태를 수동으로 확인
+        input.viewWillAppear
+            .subscribe(onNext: { [weak self] _ in
+                print("viewWillAppear - 화면 나타남, 권한 상태 수동 확인")
+                // 설정에서 권한을 변경하고 돌아온 경우 델리게이트가 호출되지 않을 수 있으므로
+                // 수동으로 현재 권한 상태를 확인하여 업데이트
+                self?.locationManager.checkCurrentAuthorizationStatus()
+            })
+            .disposed(by: disposeBag)
+
         // MARK: - 현재 위치 구독
         locationManager.currentLocation
+            .do(onNext: { location in
+                print("LocationManager -> MapViewModel 위치 수신: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+            })
             .drive(with: self) { owner, location in
+                print("currentLocationRelay.accept() 호출")
                 currentLocationRelay.accept(location)
+
+                // 위치를 처음 받았을 때, 선택된 카테고리로 자동 검색
+                // (이미 카테고리가 선택되어 있다면 검색 트리거)
+                let currentCategory = selectedCategoryRelay.value
+                print("위치 획득 후 자동 검색 트리거 - 카테고리: \(currentCategory)")
+            }
+            .disposed(by: disposeBag)
+
+        // MARK: - 위치 권한 상태 구독
+        let locationAuthorizationDeniedRelay = PublishRelay<Void>()
+
+        locationManager.authorizationStatus
+            .drive(with: self) { owner, status in
+                print("========================================")
+                print("MapViewModel - 권한 상태 변경 감지: \(status)")
+                print("========================================")
+
+                switch status {
+                case .denied:
+                    // 위치 권한이 거부되었을 때
+                    print("권한 거부됨 - Alert 표시")
+                    locationAuthorizationDeniedRelay.accept(())
+
+                case .authorized:
+                    // 권한이 허용되었을 때 (설정에서 돌아온 경우 포함)
+                    // 위치 업데이트 시작만 하고, 실제 위치는 currentLocation Driver에서 수신
+                    print("권한 허용됨 - 위치 업데이트 시작")
+                    self.locationManager.startUpdatingLocation()
+                    print("위치는 currentLocation Driver에서 자동 수신됨")
+
+                case .notDetermined:
+                    print("권한 미결정 상태")
+                }
             }
             .disposed(by: disposeBag)
  
 
         // MARK: - 카테고리 선택 시 처리
         input.categorySelected
-            .do(onNext: { category in
-                // 10-1. 선택된 카테고리 저장
+            .subscribe(onNext: { category in
+                // 선택된 카테고리 저장
                 selectedCategoryRelay.accept(category)
+                print("카테고리 선택됨: \(category)")
             })
-            .withLatestFrom(currentLocationRelay) { ($0, $1) }  // (카테고리, 현재위치) 튜플
-            .flatMapLatest { [weak self] category, location -> Observable<[KakaoPlace]> in
-                guard let self = self else { return .empty() }
-
-                // 로딩 시작
-                isLoadingRelay.accept(true)
-
-                // 선택된 카테고리로 장소 검색
-                return self.searchPlaces(
-                    category: category,
-                    location: location
-                )
-                .asObservable()
-                .do(
-                    onNext: { _ in
-                        // 로딩 종료 (성공)
-                        isLoadingRelay.accept(false)
-                    },
-                    onError: { error in
-                        // 로딩 종료 (실패)
-                        isLoadingRelay.accept(false)
-                        errorMessageRelay.accept("장소 검색 실패: \(error.localizedDescription)")
-                    }
-                )
-                .catch { _ in .just([]) }  // 에러 시 빈 배열
-            }
-            .bind(with: self) { owner, places in
-                // 검색 결과를 전체 목록과 현재 목록 모두에 저장
-                fullPlacesRelay.accept(places)
-                placesRelay.accept(places)
-            }
             .disposed(by: disposeBag)
+
+        // MARK: - 위치와 카테고리 결합하여 자동 검색
+        // 위치 또는 카테고리가 변경될 때마다 자동으로 장소 검색
+        Observable.combineLatest(
+            currentLocationRelay.asObservable(),
+            selectedCategoryRelay.asObservable()
+        )
+        .compactMap { (location, category) -> (CLLocation, KakaoPlaceCategory)? in
+            // nil 위치 필터링
+            guard let location = location else {
+                print("combineLatest: 위치가 아직 nil - 대기 중")
+                return nil
+            }
+            return (location, category)
+        }
+        .debounce(.milliseconds(300), scheduler: MainScheduler.instance)  // 0.3초 디바운스
+        .do(onNext: { location, category in
+            print("========================================")
+            print("combineLatest 트리거됨")
+            print("  - 위치: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+            print("  - 카테고리: \(category)")
+            print("========================================")
+        })
+        .flatMapLatest { [weak self] location, category -> Observable<[KakaoPlace]> in
+            guard let self = self else { return .empty() }
+
+            // 로딩 시작
+            isLoadingRelay.accept(true)
+
+            print("장소 검색 시작 - 카테고리: \(category), 위치: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+
+            // 선택된 카테고리로 장소 검색
+            return self.searchPlaces(
+                category: category,
+                location: location
+            )
+            .asObservable()
+            .do(
+                onNext: { places in
+                    // 로딩 종료 (성공)
+                    isLoadingRelay.accept(false)
+                    print("장소 검색 완료: \(places.count)개")
+                },
+                onError: { error in
+                    // 로딩 종료 (실패)
+                    isLoadingRelay.accept(false)
+                    errorMessageRelay.accept("장소 검색 실패: \(error.localizedDescription)")
+                    print("장소 검색 실패: \(error.localizedDescription)")
+                }
+            )
+            .catch { _ in .just([]) }  // 에러 시 빈 배열
+        }
+        .bind(with: self) { owner, places in
+            // 검색 결과를 전체 목록과 현재 목록 모두에 저장
+            print("검색 결과 Relay에 바인딩: \(places.count)개")
+            fullPlacesRelay.accept(places)
+            placesRelay.accept(places)
+        }
+        .disposed(by: disposeBag)
 
         // MARK: - 현재 위치 버튼 탭 시 처리
         input.currentLocationTapped
             .withLatestFrom(currentLocationRelay)
+            .compactMap { $0 }  // nil 필터링
             .bind(with: self) { owner, location in
                 // 현재 위치를 다시 방출 (지도 중심 이동용)
                 currentLocationRelay.accept(location)
@@ -294,7 +378,7 @@ final class MapViewModel: BaseViewModel {
 
         return Output(
             places: placesRelay.asDriver(),
-            currentLocation: currentLocationRelay.asDriver(onErrorDriveWith: .empty()),
+            currentLocation: currentLocationRelay.asDriver().compactMap { $0 },
             isLoading: isLoadingRelay.asDriver(),
             errorMessage: errorMessageRelay.asDriver(onErrorDriveWith: .empty()),
             selectedCategory: selectedCategoryRelay.asDriver(),
@@ -302,7 +386,8 @@ final class MapViewModel: BaseViewModel {
             showToast: toastMessageRelay.asDriver(onErrorDriveWith: .empty()),
             showFolderSelection: showFolderSelectionRelay.asDriver(onErrorDriveWith: .empty()),
             showDeleteConfirmation: showDeleteConfirmationRelay.asDriver(onErrorDriveWith: .empty()),
-            updateFavoriteState: updateFavoriteStateRelay.asDriver(onErrorDriveWith: .empty())
+            updateFavoriteState: updateFavoriteStateRelay.asDriver(onErrorDriveWith: .empty()),
+            locationAuthorizationDenied: locationAuthorizationDeniedRelay.asDriver(onErrorDriveWith: .empty())
         )
     }
 

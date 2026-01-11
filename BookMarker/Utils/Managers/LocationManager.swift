@@ -37,14 +37,20 @@ final class LocationManager: NSObject {
     private let disposeBag = DisposeBag()
 
     // 외부에서 구독할 수 있는 현재 위치 Observable (Driver)
-    var currentLocation: Driver<CLLocation> {
-        return currentLocationSubject.asDriver(onErrorDriveWith: .empty())
-    }
+    // lazy var로 캐싱하여 항상 같은 Driver 인스턴스를 반환
+    lazy var currentLocation: Driver<CLLocation> = {
+        return currentLocationSubject
+            .observe(on: MainScheduler.instance)  // 메인 스레드에서 실행 보장
+            .asDriver(onErrorDriveWith: .empty())
+    }()
 
     // 외부에서 구독할 수 있는 권한 상태 Observable (Driver)
-    var authorizationStatus: Driver<LocationAuthorizationStatus> {
-        return authorizationStatusSubject.asDriver(onErrorJustReturn: .denied)
-    }
+    // lazy var로 캐싱하여 항상 같은 Driver 인스턴스를 반환
+    lazy var authorizationStatus: Driver<LocationAuthorizationStatus> = {
+        return authorizationStatusSubject
+            .observe(on: MainScheduler.instance)  // 메인 스레드에서 실행 보장
+            .asDriver(onErrorJustReturn: .denied)
+    }()
 
     private override init() {
         super.init()
@@ -79,25 +85,43 @@ final class LocationManager: NSObject {
         locationManager.requestWhenInUseAuthorization()
     }
 
+    // 현재 권한 상태를 수동으로 확인하고 업데이트
+    // 설정 앱에서 돌아왔을 때 델리게이트가 호출되지 않는 경우 대비
+    func checkCurrentAuthorizationStatus() {
+        let status = locationManager.authorizationStatus
+        print("========================================")
+        print("수동 권한 상태 확인")
+        print("  - 현재 상태 rawValue: \(status.rawValue)")
+        print("  - notDetermined(0), restricted(1), denied(2), authorizedAlways(3), authorizedWhenInUse(4)")
+        print("========================================")
+        updateAuthorizationStatus(status)
+    }
+
     // 권한 상태를 LocationAuthorizationStatus로 변환하여 방출
     private func updateAuthorizationStatus(_ status: CLAuthorizationStatus) {
+        print("updateAuthorizationStatus 호출됨: \(status.rawValue)")
+
         switch status {
         case .notDetermined:
             // 아직 권한 요청 안 함
+            print(".notDetermined - Subject로 방출")
             authorizationStatusSubject.onNext(.notDetermined)
 
         case .denied, .restricted:
             // 권한 거부 또는 제한됨
+            print(".denied - Subject로 방출")
             authorizationStatusSubject.onNext(.denied)
 
         case .authorizedWhenInUse, .authorizedAlways:
             // 권한 허용됨
+            print(".authorized - Subject로 방출 및 위치 업데이트 시작")
             authorizationStatusSubject.onNext(.authorized)
             // 위치 업데이트 시작
             startUpdatingLocation()
 
         @unknown default:
             // 미래에 추가될 수 있는 케이스 대비
+            print("@unknown default - .denied로 방출")
             authorizationStatusSubject.onNext(.denied)
         }
     }
@@ -110,6 +134,11 @@ final class LocationManager: NSObject {
         // 위치 서비스가 비활성화된 경우 didFailWithError에서 처리됨
         locationManager.startUpdatingLocation()
         print("위치 업데이트 시작")
+
+        // 설정에서 돌아온 경우 즉시 위치를 한 번 요청
+        // startUpdatingLocation()만으로는 위치가 즉시 방출되지 않을 수 있음
+        locationManager.requestLocation()
+        print("즉시 위치 요청 (requestLocation)")
     }
 
     // 위치 업데이트 중지
@@ -177,11 +206,10 @@ extension LocationManager: CLLocationManagerDelegate {
             return
         }
 
-        // 너무 오래된 위치 필터링 (5초 이내)
+        // 위치 데이터의 나이 확인 (경고용)
         let age = abs(location.timestamp.timeIntervalSinceNow)
-        guard age < 5.0 else {
-            print("오래된 위치 데이터: \(age)초 전")
-            return
+        if age > 5.0 {
+            print("오래된 위치 데이터지만 일단 사용: \(age)초 전")
         }
 
         // 유효한 위치를 Subject로 방출
@@ -205,14 +233,18 @@ extension LocationManager: CLLocationManagerDelegate {
             case .locationUnknown:
                 // 위치를 찾을 수 없음 (일시적, 재시도 가능)
                 print("위치를 찾을 수 없습니다. 재시도 중...")
+                // 재시도: 위치를 다시 요청
+                locationManager.requestLocation()
 
             default:
                 print("기타 위치 에러: \(clError.code.rawValue)")
             }
         }
 
-        // Subject로 에러 전달
-        currentLocationSubject.onError(error)
+        // 중요: Subject로 에러를 전달하면 Subject가 종료되어
+        // 이후 위치 업데이트를 받을 수 없음
+        // 에러는 로깅만 하고 Subject는 계속 유지
+        // currentLocationSubject.onError(error) // 제거됨
     }
 }
 
