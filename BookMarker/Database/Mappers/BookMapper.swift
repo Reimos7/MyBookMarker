@@ -7,10 +7,13 @@
 
 import Foundation
 
-/// Item(DTO) ↔ BookRealmModel 변환 매퍼
+// Item(DTO) ↔ BookRealmModel 변환 매퍼
 enum BookMapper {
 
-    /// API Item을 BookRealmModel로 변환
+    // API Item을 BookRealmModel로 변환
+    //
+    // Realm에 저장할 때 고해상도 이미지 URL로 변환
+    // 한 번 저장된 후에는 항상 고화질 이미지를 표시
     static func toRealmModel(from item: Item) -> BookRealmModel {
         return BookRealmModel(
             isbn13: item.isbn13,
@@ -18,14 +21,14 @@ enum BookMapper {
             author: item.author,
             publisher: item.publisher,
             publishedDate: item.pubDate,
-            coverImageURL: item.cover,
+            coverImageURL: item.highResolutionCover,
             bookDescription: item.description,
             category: item.categoryName
         )
     }
 
-    /// BookRealmModel을 Item(DTO)로 변환
-    /// - Note: Item은 Decodable이므로 직접 생성할 수 없어 임시 Item 객체를 반환
+    // BookRealmModel을 Item(DTO)로 변환
+    // - Note: Item은 Decodable이므로 직접 생성할 수 없어 임시 Item 객체를 반환
     static func toItem(from realmModel: BookRealmModel) -> Item {
         // JSON을 통한 우회 변환
         let dict: [String: Any?] = [

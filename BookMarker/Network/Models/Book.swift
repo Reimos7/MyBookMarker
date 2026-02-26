@@ -18,7 +18,7 @@ struct Item: Decodable {
     let author, pubDate, description: String?
     let isbn13: String?
     let itemId, priceSales, priceStandard: Int?
-    // 도서 표지 이미지
+    // 도서 표지 이미지 (API 기본값: coversum - 저해상도 썸네일)
     let cover: String?
     let categoryId: Int?
     let categoryName, publisher: String?
@@ -28,5 +28,20 @@ struct Item: Decodable {
     // 베스트 셀러로 머문 기간
     let bestDuration: String?
     let bestRank: Int?
+
+    // MARK: - Computed Property
+
+    // 고해상도 표지 이미지 URL
+    var highResolutionCover: String? {
+        guard let cover else { return nil }
+
+        // coversum이 포함된 경우에만 교체 
+        if cover.contains("coversum") {
+            return cover.replacingOccurrences(of: "coversum", with: "cover500")
+        }
+
+        // coversum이 없는 경우 원본 URL 반환 (예상치 못한 URL 구조 변경 대비)
+        return cover
+    }
 }
 

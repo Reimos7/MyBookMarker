@@ -208,7 +208,7 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
         let rating = Double(item.customerReviewRank ?? 0)
         configureRating(rating)
 
-        if let coverURL = item.cover, let url = URL(string: coverURL) {
+        if let coverURL = item.highResolutionCover, let url = URL(string: coverURL) {
             coverImageView.kf.setImage(
                 with: url,
                 placeholder: UIImage(systemName: "book.closed"),

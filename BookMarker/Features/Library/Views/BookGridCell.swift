@@ -131,7 +131,7 @@ final class BookGridCell: BaseCollectionViewCell {
     // MARK: - Configuration
     func configure(with item: Item) {
         // 책 표지
-        if let coverURL = item.cover, let url = URL(string: coverURL) {
+        if let coverURL = item.highResolutionCover, let url = URL(string: coverURL) {
             coverImageView.kf.setImage(
                 with: url,
                 placeholder: UIImage(systemName: "book.closed"),

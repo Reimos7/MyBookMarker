@@ -118,7 +118,7 @@ final class NewBookCell: BaseCollectionViewCell {
     func configure(with item: Item) {
         categoryTagLabel.text = getLastCategory(from: item.categoryName)
 
-        if let coverURL = item.cover, let url = URL(string: coverURL) {
+        if let coverURL = item.highResolutionCover, let url = URL(string: coverURL) {
             coverImageView.kf.setImage(
                 with: url,
                 placeholder: UIImage(systemName: "book.closed"),

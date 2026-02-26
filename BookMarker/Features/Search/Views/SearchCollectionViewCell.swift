@@ -130,7 +130,7 @@ final class SearchCollectionViewCell: BaseCollectionViewCell {
             .trimmingCharacters(in: .whitespaces)
         categoryTagLabel.text = lastCategory ?? "도서"
 
-        if let coverURL = item.cover, let url = URL(string: coverURL) {
+        if let coverURL = item.highResolutionCover, let url = URL(string: coverURL) {
             coverImageView.kf.setImage(
                 with: url,
                 placeholder: UIImage(systemName: "book.closed"),
