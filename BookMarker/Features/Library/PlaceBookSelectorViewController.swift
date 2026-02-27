@@ -10,7 +10,6 @@ import SnapKit
 import Then
 import RxSwift
 import RxCocoa
-import Kingfisher
 import Toast
 
 /// 장소에 책을 추가하기 위한 책 선택 화면
@@ -253,17 +252,7 @@ final class PlaceBookSelectorCell: UITableViewCell {
     func configure(book: BookRealmModel, folderNames: String) {
         titleLabel.text = book.title
         folderLabel.text = "📁 \(folderNames)"
-
-        if let coverURL = book.coverImageURL, let url = URL(string: coverURL) {
-            bookImageView.kf.setImage(
-                with: url,
-                placeholder: UIImage(systemName: "book.closed"),
-                options: [.transition(.fade(0.2))]
-            )
-        } else {
-            bookImageView.image = UIImage(systemName: "book.closed")
-            bookImageView.tintColor = .systemGray3
-        }
+        bookImageView.setBookCover(with: book.coverImageURL)
     }
 
     override func prepareForReuse() {

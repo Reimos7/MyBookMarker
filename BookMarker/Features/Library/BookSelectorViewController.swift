@@ -202,17 +202,7 @@ final class BookSelectorCell: UITableViewCell {
     func configure(with book: BookRealmModel) {
         titleLabel.text = book.title
         authorLabel.text = book.cleanAuthorName
-
-        if let coverURL = book.coverImageURL, let url = URL(string: coverURL) {
-            bookImageView.kf.setImage(
-                with: url,
-                placeholder: UIImage(systemName: "book.closed"),
-                options: [.transition(.fade(0.3))]
-            )
-        } else {
-            bookImageView.image = UIImage(systemName: "book.closed")
-            bookImageView.tintColor = .systemGray4
-        }
+        bookImageView.setBookCover(with: book.coverImageURL)
     }
 
     override func prepareForReuse() {

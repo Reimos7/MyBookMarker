@@ -8,7 +8,6 @@
 import UIKit
 import SnapKit
 import Then
-import Kingfisher
 
 final class NewBookCell: BaseCollectionViewCell {
 
@@ -118,18 +117,7 @@ final class NewBookCell: BaseCollectionViewCell {
     func configure(with item: Item) {
         categoryTagLabel.text = getLastCategory(from: item.categoryName)
 
-        if let coverURL = item.highResolutionCover, let url = URL(string: coverURL) {
-            coverImageView.kf.setImage(
-                with: url,
-                placeholder: UIImage(systemName: "book.closed"),
-                options: [
-                    .transition(.fade(0.3)),
-                    .cacheOriginalImage
-                ]
-            )
-        } else {
-            coverImageView.image = UIImage(systemName: "book.closed")
-        }
+        coverImageView.setBookCover(with: item)
     }
 
     private func getLastCategory(from categoryName: String?) -> String {

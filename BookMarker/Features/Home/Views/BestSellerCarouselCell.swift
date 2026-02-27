@@ -8,7 +8,6 @@
 import UIKit
 import SnapKit
 import Then
-import Kingfisher
 
 final class BestSellerCarouselCell: BaseCollectionViewCell {
 
@@ -208,18 +207,7 @@ final class BestSellerCarouselCell: BaseCollectionViewCell {
         let rating = Double(item.customerReviewRank ?? 0)
         configureRating(rating)
 
-        if let coverURL = item.highResolutionCover, let url = URL(string: coverURL) {
-            coverImageView.kf.setImage(
-                with: url,
-                placeholder: UIImage(systemName: "book.closed"),
-                options: [
-                    .transition(.fade(0.3)),
-                    .cacheOriginalImage
-                ]
-            )
-        } else {
-            coverImageView.image = UIImage(systemName: "book.closed")
-        }
+        coverImageView.setBookCover(with: item)
     }
 
     private func configureRating(_ rating: Double) {

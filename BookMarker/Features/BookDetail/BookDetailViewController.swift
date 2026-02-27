@@ -10,7 +10,6 @@ import SnapKit
 import Then
 import RxSwift
 import RxCocoa
-import Kingfisher
 
 final class BookDetailViewController: UIViewController {
 
@@ -205,16 +204,7 @@ final class BookDetailViewController: UIViewController {
         }
 
         // 책 이미지 설정
-        if let coverURL = book.highResolutionCover, let url = URL(string: coverURL) {
-            bookImageView.kf.setImage(
-                with: url,
-                placeholder: UIImage(systemName: "book.closed"),
-                options: [
-                    .transition(.fade(0.3)),
-                    .cacheOriginalImage
-                ]
-            )
-        }
+        bookImageView.setBookCover(with: book)
 
         // 별점 설정 (customerReviewRank를 10점 만점으로 사용)
         if let reviewRank = book.customerReviewRank {

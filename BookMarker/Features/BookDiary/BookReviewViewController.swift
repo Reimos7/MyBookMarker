@@ -10,7 +10,6 @@ import SnapKit
 import Then
 import RxSwift
 import RxCocoa
-import Kingfisher
 import RealmSwift
 
 /// 저장된 독서 일기를 보여주는 뷰 컨트롤러
@@ -425,16 +424,7 @@ final class BookReviewViewController: UIViewController {
         publisherLabel.text = book.publisher
 
         // 표지 이미지 (Realm에 고해상도 URL로 저장됨)
-        if let coverURL = book.coverImageURL, let url = URL(string: coverURL) {
-            bookCoverImageView.kf.setImage(
-                with: url,
-                placeholder: UIImage(systemName: "book.closed"),
-                options: [
-                    .transition(.fade(0.3)),
-                    .cacheOriginalImage
-                ]
-            )
-        }
+        bookCoverImageView.setBookCover(with: book.coverImageURL)
 
         // 읽기 상태
         readingStatusLabel.text = book.isReadingComplete ? "읽기 완료" : "읽는 중"

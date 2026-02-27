@@ -8,7 +8,6 @@
 import UIKit
 import SnapKit
 import Then
-import Kingfisher
 import RxSwift
 
 final class SearchCollectionViewCell: BaseCollectionViewCell {
@@ -130,18 +129,7 @@ final class SearchCollectionViewCell: BaseCollectionViewCell {
             .trimmingCharacters(in: .whitespaces)
         categoryTagLabel.text = lastCategory ?? "도서"
 
-        if let coverURL = item.highResolutionCover, let url = URL(string: coverURL) {
-            coverImageView.kf.setImage(
-                with: url,
-                placeholder: UIImage(systemName: "book.closed"),
-                options: [
-                    .transition(.fade(0.3)),
-                    .cacheOriginalImage
-                ]
-            )
-        } else {
-            coverImageView.image = UIImage(systemName: "book.closed")
-        }
+        coverImageView.setBookCover(with: item)
 
         // 좋아요 상태 설정
         favoriteButton.isSelected = isFavorite

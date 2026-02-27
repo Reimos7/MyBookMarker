@@ -8,7 +8,6 @@
 import UIKit
 import SnapKit
 import Then
-import Kingfisher
 
 final class BookImageCell: BaseCollectionViewCell {
 
@@ -38,19 +37,7 @@ final class BookImageCell: BaseCollectionViewCell {
     }
 
     func configure(with item: Item) {
-        // 책 이미지 설정
-        if let coverURL = item.highResolutionCover, let url = URL(string: coverURL) {
-            bookImageView.kf.setImage(
-                with: url,
-                placeholder: UIImage(systemName: "book.closed"),
-                options: [
-                    .transition(.fade(0.3)),
-                    .cacheOriginalImage
-                ]
-            )
-        } else {
-            bookImageView.image = UIImage(systemName: "book.closed")
-        }
+        bookImageView.setBookCover(with: item)
     }
 
     override func prepareForReuse() {

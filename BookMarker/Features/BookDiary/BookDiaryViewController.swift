@@ -10,7 +10,6 @@ import SnapKit
 import Then
 import RxSwift
 import RxCocoa
-import Kingfisher
 import IQKeyboardManagerSwift
 
 final class BookDiaryViewController: UIViewController {
@@ -508,16 +507,7 @@ final class BookDiaryViewController: UIViewController {
         bookTitleLabel.text = bookItem.title
         bookAuthorLabel.text = bookItem.author
 
-        if let coverURL = bookItem.highResolutionCover, let url = URL(string: coverURL) {
-            bookCoverImageView.kf.setImage(
-                with: url,
-                placeholder: UIImage(systemName: "book.closed"),
-                options: [
-                    .transition(.fade(0.3)),
-                    .cacheOriginalImage
-                ]
-            )
-        }
+        bookCoverImageView.setBookCover(with: bookItem)
     }
 
     private func setupBindings() {

@@ -8,7 +8,6 @@
 import UIKit
 import SnapKit
 import Then
-import Kingfisher
 
 final class BookCoverCell: BaseCollectionViewCell {
 
@@ -80,20 +79,7 @@ final class BookCoverCell: BaseCollectionViewCell {
 //            authorLabel.text = "저자미상"
 //        }
 
-        // 책 이미지 설정
-        if let coverURL = item.highResolutionCover, let url = URL(string: coverURL) {
-            bookImageView.kf.setImage(
-                with: url,
-                placeholder: UIImage(systemName: "book.closed"),
-                options: [
-                    .transition(.fade(0.3)),
-                    .cacheOriginalImage
-                ]
-            )
-        } else {
-            bookImageView.image = UIImage(systemName: "book.closed")
-            bookImageView.tintColor = .systemGray4
-        }
+        bookImageView.setBookCover(with: item)
     }
 
     override func prepareForReuse() {
