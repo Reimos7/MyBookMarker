@@ -119,6 +119,7 @@ final class HomeViewController: UIViewController {
     private var carouselTimer: Timer?
     private var originalItemCount = 0
     private var currentRealIndex = 0
+    private var isAutoScrollAnimating = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -163,27 +164,24 @@ final class HomeViewController: UIViewController {
 
     private func autoScrollCarousel() {
         let numberOfItems = bestSellerCollectionView.numberOfItems(inSection: 0)
-        guard originalItemCount > 1, numberOfItems > 2 else {
-            print("아이템 개수 부족: \(numberOfItems)")
+        guard originalItemCount > 1, numberOfItems > 2, !isAutoScrollAnimating else {
             return
         }
 
-        // 현재 실제 인덱스에서 다음으로 이동
-        currentRealIndex = (currentRealIndex + 1) % originalItemCount
-        let nextCollectionIndex = currentRealIndex + 1 // 첫 번째 복제 아이템 때문에 +1
+        // 항상 현재 컬렉션 인덱스에서 +1로 오른쪽 이동
+        let pageWidth = bestSellerCollectionView.frame.width
+        guard pageWidth > 0 else { return }
+        let currentCollectionIndex = Int(round(bestSellerCollectionView.contentOffset.x / pageWidth))
+        let nextCollectionIndex = currentCollectionIndex + 1
 
-        print("자동 스크롤: 실제 \(currentRealIndex) (컬렉션 인덱스: \(nextCollectionIndex))")
-
-        // 다음 페이지로 스크롤
-        let targetOffset = CGPoint(x: CGFloat(nextCollectionIndex) * bestSellerCollectionView.frame.width, y: 0)
-        bestSellerCollectionView.setContentOffset(targetOffset, animated: true)
-
+        // 실제 인덱스 업데이트
+        currentRealIndex = getRealIndex(from: nextCollectionIndex)
         pageControl.currentPage = currentRealIndex
 
-        // 무한 스크롤 처리를 위한 지연 체크
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.checkAndHandleInfiniteScroll()
-        }
+        // 다음 페이지로 스크롤 (항상 오른쪽으로)
+        isAutoScrollAnimating = true
+        let targetOffset = CGPoint(x: CGFloat(nextCollectionIndex) * pageWidth, y: 0)
+        bestSellerCollectionView.setContentOffset(targetOffset, animated: true)
     }
 
     private func setupNavigationBar() {
@@ -214,37 +212,31 @@ final class HomeViewController: UIViewController {
     private func checkAndHandleInfiniteScroll() {
         guard originalItemCount > 1 else { return }
 
-        let currentOffset = bestSellerCollectionView.contentOffset
         let itemWidth = bestSellerCollectionView.frame.width
-        let currentIndex = Int(round(currentOffset.x / itemWidth))
-
-        print("무한 스크롤 체크: 현재 인덱스 \(currentIndex), 원본 개수: \(originalItemCount)")
+        guard itemWidth > 0 else { return }
+        let currentIndex = Int(round(bestSellerCollectionView.contentOffset.x / itemWidth))
 
         // 첫 번째 복제 아이템(인덱스 0)에 있을 때 → 마지막 실제 아이템으로 점프
-        if currentIndex == 0 {
-            let lastRealItemIndex = originalItemCount // 마지막 실제 아이템
+        if currentIndex <= 0 {
             bestSellerCollectionView.setContentOffset(
-                CGPoint(x: CGFloat(lastRealItemIndex) * itemWidth, y: 0),
+                CGPoint(x: CGFloat(originalItemCount) * itemWidth, y: 0),
                 animated: false
             )
             currentRealIndex = originalItemCount - 1
             pageControl.currentPage = currentRealIndex
-            print(" 처음으로 점프: 인덱스 \(lastRealItemIndex)  실제 \(currentRealIndex)")
         }
-        // 마지막 복제 아이템에 있을 때  첫 번째 실제 아이템으로 점프
-        else if currentIndex == originalItemCount + 1 {
+        // 마지막 복제 아이템에 있을 때 → 첫 번째 실제 아이템으로 점프
+        else if currentIndex >= originalItemCount + 1 {
             bestSellerCollectionView.setContentOffset(
                 CGPoint(x: itemWidth, y: 0),
                 animated: false
             )
             currentRealIndex = 0
             pageControl.currentPage = currentRealIndex
-            print("끝으로 점프: 인덱스 1 실제 \(currentRealIndex)")
         }
     }
 
     private func handleInfiniteScroll() {
-        // didEndDecelerating에서 호출되는 함수
         checkAndHandleInfiniteScroll()
     }
 
@@ -265,6 +257,15 @@ final class HomeViewController: UIViewController {
         else {
             return collectionIndex - 1
         }
+    }
+}
+
+// MARK: - UIScrollViewDelegate (자동 스크롤 애니메이션 완료 처리)
+extension HomeViewController: UIScrollViewDelegate {
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+        guard scrollView === bestSellerCollectionView else { return }
+        isAutoScrollAnimating = false
+        checkAndHandleInfiniteScroll()
     }
 }
 
@@ -414,6 +415,10 @@ extension HomeViewController: DesignProtocol {
 extension HomeViewController {
 
     func bind() {
+        // UIScrollViewDelegate 연결 (자동 스크롤 애니메이션 완료 감지용)
+        bestSellerCollectionView.rx.setDelegate(self)
+            .disposed(by: disposeBag)
+
         let input = HomeViewModel.Input(
             viewDidLoad: Observable.just(()),
             categorySelected: Observable.never(), // 일단 비활성화
