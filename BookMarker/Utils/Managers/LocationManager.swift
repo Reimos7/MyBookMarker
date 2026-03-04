@@ -26,9 +26,9 @@ final class LocationManager: NSObject {
     
     private let locationManager = CLLocationManager()
 
-    // 현재 위치를 방출하는 PublishSubject
-    // ViewController에서 구독하여 위치 변경 감지
-    private let currentLocationSubject = PublishSubject<CLLocation>()
+    // 현재 위치를 방출하는 ReplaySubject (마지막 1개 캐싱)
+    // PublishSubject는 구독 전에 방출된 위치를 놓치므로 ReplaySubject 사용
+    private let currentLocationSubject = ReplaySubject<CLLocation>.create(bufferSize: 1)
 
     // 권한 상태를 방출하는 BehaviorSubject
     // 초기값은 notDetermined
