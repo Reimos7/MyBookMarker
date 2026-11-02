@@ -1,0 +1,12 @@
+{
+  "name": "bookmarker-proxy",
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "wrangler": "^4.156.1"
+  }
+}

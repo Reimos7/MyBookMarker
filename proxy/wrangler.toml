@@ -1,0 +1,7 @@
+# Cloudflare Worker 설정
+# 배포하면 https://bookmarker-proxy.<내 서브도메인>.workers.dev 주소가 생긴다
+name = "bookmarker-proxy"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# YES24_API_KEY는 여기에 적지 않는다 (npx wrangler secret put YES24_API_KEY 로 등록)
