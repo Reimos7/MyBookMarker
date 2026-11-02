@@ -18,7 +18,6 @@ final class SearchViewController: UIViewController {
     private let resultCountLabel = UILabel().then {
         $0.font = .systemFont(ofSize: 16, weight: .bold)
         $0.textColor = .black
-        //$0.text = "검색 결과 (0건)"
         $0.text = "검색 결과"
     }
 
@@ -75,12 +74,6 @@ final class SearchViewController: UIViewController {
         // 뒤로가기 버튼 표시
         navigationItem.hidesBackButton = false
     }
-
-//    @objc private func searchButtonTapped() {
-//        searchBar.textField.becomeFirstResponder()
-//    }
-//    
-   
 }
 
 
@@ -88,43 +81,43 @@ final class SearchViewController: UIViewController {
 extension SearchViewController: DesiginProtocolBind {
     
     func bind() {
-        let searchTrigger = PublishSubject<Void>()
-        let favoriteButtonTappedSubject = PublishSubject<(Item, Int)>()
-        let deleteConfirmedSubject = PublishSubject<(Item, Int)>()
+        // UI 이벤트는 에러/종료가 없으므로 Relay 사용 (onError로 스트림이 끊길 일이 없음)
+        let searchTrigger = PublishRelay<Void>()
+        let favoriteButtonTapped = PublishRelay<Item>()
+        let deleteConfirmed = PublishRelay<Item>()
 
         let input = SearchViewModel.Input(
             searchText: searchBar.textField.rx.text.orEmpty.asObservable(),
             searchTrigger: searchTrigger.asObservable(),
-            favoriteButtonTapped: favoriteButtonTappedSubject.asObservable(),
-            deleteConfirmed: deleteConfirmedSubject.asObservable()
+            favoriteButtonTapped: favoriteButtonTapped.asObservable(),
+            deleteConfirmed: deleteConfirmed.asObservable()
         )
 
         let output = viewModel.transform(input)
 
         // 검색 결과를 컬렉션뷰에 바인딩
         output.books
-            .drive(onNext: { [weak self] items in
-                guard let self = self else { return }
+            .drive(with: self) { owner, items in
                 // 현재 아이템 저장
-                self.currentItems = items
+                owner.currentItems = items
                 // 검색 결과가 로드되면 좋아요 상태 초기화
-                self.loadFavoriteStates(for: items)
-            })
+                owner.loadFavoriteStates(for: items)
+            }
             .disposed(by: disposeBag)
 
         output.books
             .drive(collectionView.rx.items(
                 cellIdentifier: SearchCollectionViewCell.reuseIdentifier,
                 cellType: SearchCollectionViewCell.self
-            )) { [weak self] index, item, cell in
-                guard let self = self else { return }
+            )) { [weak self] _, item, cell in
+                guard let self else { return }
                 // 좋아요 상태 확인
                 let isFavorite = self.favoriteStates[item.isbn13 ?? ""] ?? false
                 cell.configure(with: item, isFavorite: isFavorite)
 
-                // 좋아요 버튼 탭 이벤트
+                // 좋아요 버튼 탭 이벤트 (몇 번째 칸인지는 VM이 알 필요 없으므로 도서만 전달)
                 cell.favoriteButtonTapped = {
-                    favoriteButtonTappedSubject.onNext((item, index))
+                    favoriteButtonTapped.accept(item)
                 }
             }
             .disposed(by: disposeBag)
@@ -136,51 +129,44 @@ extension SearchViewController: DesiginProtocolBind {
 
         // 로딩 상태 처리
         output.isLoading
-            .drive(onNext: { [weak self] isLoading in
-                // TODO: 로딩 인디케이터 표시/숨김
-            })
+            .drive(with: self) { owner, isLoading in
+                // TODO: - 로딩 인디케이터 표시/숨김
+            }
             .disposed(by: disposeBag)
 
-        // 에러 처리
+        // 에러 처리 (Signal은 drive 대신 emit으로 구독)
         output.error
-            .filter { !$0.isEmpty }
-            .drive(with: self) { owner, error in
+            .emit(with: self) { owner, error in
                 owner.view.makeToast(error)
             }
             .disposed(by: disposeBag)
 
-//            .drive(onNext: { [weak self] error in
-//                self?.view.makeToast(error)
-//            })
-//            .disposed(by: disposeBag)
-
         // Toast 메시지 표시
         output.showToast
-            .filter { !$0.isEmpty }
-            .drive(with: self) { owner, message in
+            .emit(with: self) { owner, message in
                 owner.view.makeToast(message)
             }
             .disposed(by: disposeBag)
 
         // 폴더 선택 Alert 표시
         output.showFolderSelection
-            .drive(onNext: { [weak self] (item, index) in
-                self?.showFolderSelectionAlert(for: item, at: index)
-            })
+            .emit(with: self) { owner, item in
+                owner.showFolderSelectionAlert(for: item)
+            }
             .disposed(by: disposeBag)
 
         // 삭제 확인 Alert 표시
         output.showDeleteConfirmation
-            .drive(onNext: { [weak self] (item, index) in
-                self?.showDeleteConfirmationAlert(for: item, at: index, deleteConfirmed: deleteConfirmedSubject)
-            })
+            .emit(with: self) { owner, item in
+                owner.showDeleteConfirmationAlert(for: item, deleteConfirmed: deleteConfirmed)
+            }
             .disposed(by: disposeBag)
 
-        // 좋아요 상태 업데이트
-        output.updateFavoriteState
-            .drive(onNext: { [weak self] (index, isFavorite) in
-                self?.updateCellFavoriteState(at: index, isFavorite: isFavorite)
-            })
+        // 좋아요 상태 업데이트 (몇 번째 칸인지는 VC가 isbn13으로 찾음)
+        output.favoriteChanged
+            .emit(with: self) { owner, change in
+                owner.updateFavoriteState(isbn13: change.isbn13, isFavorite: change.isFavorite)
+            }
             .disposed(by: disposeBag)
 
         // 검색 트리거
@@ -199,11 +185,10 @@ extension SearchViewController: DesiginProtocolBind {
             .withLatestFrom(output.books) { indexPath, items in
                 return items[indexPath.item]
             }
-            .drive(onNext: { [weak self] item in
-                guard let self = self else { return }
+            .drive(with: self) { owner, item in
                 let detailVC = BookDetailViewController(book: item)
-                self.navigationController?.pushViewController(detailVC, animated: true)
-            })
+                owner.navigationController?.pushViewController(detailVC, animated: true)
+            }
             .disposed(by: disposeBag)
     }
     
@@ -256,23 +241,20 @@ extension SearchViewController: DesiginProtocolBind {
         }
     }
 
-    /// 특정 셀의 좋아요 상태 업데이트
-    private func updateCellFavoriteState(at index: Int, isFavorite: Bool) {
-        // ISBN13 기반으로 favoriteStates 업데이트
-        if index < currentItems.count,
-           let isbn13 = currentItems[index].isbn13 {
-            favoriteStates[isbn13] = isFavorite
-        }
+    /// 좋아요 상태 업데이트: ISBN13 기준으로 저장하고, 화면에 보이는 해당 도서 셀만 갱신
+    private func updateFavoriteState(isbn13: String, isFavorite: Bool) {
+        favoriteStates[isbn13] = isFavorite
 
-        // 셀이 화면에 보이는 경우에만 업데이트
-        if let cell = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? SearchCollectionViewCell {
-            cell.updateFavoriteState(isFavorite)
+        for indexPath in collectionView.indexPathsForVisibleItems
+        where indexPath.item < currentItems.count && currentItems[indexPath.item].isbn13 == isbn13 {
+            let cell = collectionView.cellForItem(at: indexPath) as? SearchCollectionViewCell
+            cell?.updateFavoriteState(isFavorite)
         }
     }
 
     // MARK: - Folder Selection Alert
 
-    private func showFolderSelectionAlert(for item: Item, at index: Int) {
+    private func showFolderSelectionAlert(for item: Item) {
         guard let window = view.window else { return }
 
         let folderSelectionView = FolderSelectionView(bookTitle: item.title ?? "도서")
@@ -290,47 +272,39 @@ extension SearchViewController: DesiginProtocolBind {
 
         // 폴더 선택 이벤트
         output.selectedFolder
-            .drive(onNext: { [weak self] selectedFolder in
-                guard let self = self else { return }
+            .drive(with: self) { owner, selectedFolder in
                 folderSelectionView.hide()
-
-                self.viewModel.addBookToSelectedFolder(item: item, folder: selectedFolder, index: index)
-                    .subscribe(onNext: { [weak self] (index, success, message) in
-                        guard let self = self else { return }
-                        if success {
-                            self.updateCellFavoriteState(at: index, isFavorite: true)
-                            if let isbn13 = item.isbn13 {
-                                self.favoriteStates[isbn13] = true
-                            }
+                owner.viewModel.addBookToSelectedFolder(item: item, folder: selectedFolder)
+                    .bind(with: self) { owner, result in
+                        if result .isAdded, let isbn13 = item.isbn13 {
+                            owner.updateFavoriteState(isbn13: isbn13, isFavorite: true)
                         }
-                        self.view.makeToast(message)
-                    })
-                    .disposed(by: self.disposeBag)
-            })
+                        owner.view.makeToast(result.message)
+                    }
+                    .disposed(by: owner.disposeBag)
+            }
             .disposed(by: disposeBag)
+        
 
         // 새 폴더 만들기
         output.showCreateFolder
-            .drive(onNext: { [weak self] _ in
-                guard let self = self else { return }
+            .drive(with: self) { owenr, _ in
                 folderSelectionView.hide()
-                print("새 폴더 만들기 화면으로 이동")
-            })
+            }
             .disposed(by: disposeBag)
 
         // 닫기 이벤트
         folderSelectionView.closeTapped
             .asDriver(onErrorDriveWith: .empty())
-            .drive(onNext: { [weak self] _ in
-                guard let self = self else { return }
+            .drive(with: self) { owenr, _ in
                 folderSelectionView.hide()
-            })
+            }
             .disposed(by: disposeBag)
-
+        
         folderSelectionView.show(in: window)
     }
 
-    private func showDeleteConfirmationAlert(for item: Item, at index: Int, deleteConfirmed: PublishSubject<(Item, Int)>) {
+    private func showDeleteConfirmationAlert(for item: Item, deleteConfirmed: PublishRelay<Item>) {
         let alert = UIAlertController(
             title: "도서 삭제",
             message: "저장된 도서를 삭제하시겠습니까?",
@@ -340,7 +314,7 @@ extension SearchViewController: DesiginProtocolBind {
         let cancelAction = UIAlertAction(title: "취소", style: .cancel, handler: nil)
 
         let confirmAction = UIAlertAction(title: "확인", style: .destructive) { _ in
-            deleteConfirmed.onNext((item, index))
+            deleteConfirmed.accept(item)
         }
 
         alert.addAction(cancelAction)

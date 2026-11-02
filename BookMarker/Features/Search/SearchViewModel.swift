@@ -11,7 +11,6 @@ import RxCocoa
 
 final class SearchViewModel: BaseViewModel {
 
-    private let disposeBag = DisposeBag()
     private let networkManager = NetworkManager.shared
     private let folderRepository = FolderRepository()
     private let bookRepository = BookRepository()
@@ -19,28 +18,36 @@ final class SearchViewModel: BaseViewModel {
     struct Input {
         let searchText: Observable<String>
         let searchTrigger: Observable<Void>
-        let favoriteButtonTapped: Observable<(Item, Int)>  // (도서, 인덱스)
-        let deleteConfirmed: Observable<(Item, Int)>  // 삭제 확인 (도서, 인덱스)
+        let favoriteButtonTapped: Observable<Item>  // 좋아요 버튼을 누른 도서
+        let deleteConfirmed: Observable<Item>  // 삭제 확인 Alert에서 확인을 누른 도서
     }
 
     struct Output {
+        // 상태: 화면이 지금 어떤 모습이어야 하는지 → Driver (마지막 값을 기억)
         let books: Driver<[Item]>
         let isLoading: Driver<Bool>
-        let error: Driver<String>
         let resultCount: Driver<String>
-        let showToast: Driver<String>
-        let showFolderSelection: Driver<(Item, Int)>  // 폴더 선택 Alert (도서, 인덱스)
-        let showDeleteConfirmation: Driver<(Item, Int)>  // 삭제 확인 Alert (도서, 인덱스)
-        let updateFavoriteState: Driver<(Int, Bool)>  // (인덱스, 좋아요 상태)
+
+        // 이벤트: 한 번 일어나고 끝나는 일 → Signal (지난 값을 기억하지 않음)
+        let error: Signal<String>
+        let showToast: Signal<String>
+        let showFolderSelection: Signal<Item>  // 폴더 선택 Alert
+        let showDeleteConfirmation: Signal<Item>  // 삭제 확인 Alert
+        let favoriteChanged: Signal<(isbn13: String, isFavorite: Bool)>  // 좋아요 상태 변경
+    }
+
+    // 좋아요 탭 / 삭제 확인을 처리한 결과
+    private enum FavoriteEvent {
+        case added(isbn13: String)    // 기본 폴더에 저장됨
+        case removed(isbn13: String)  // 내 서재에서 삭제됨
+        case askFolder(Item)          // 사용자가 만든 폴더가 있어서 폴더 선택 필요
+        case askDelete(Item)          // 이미 저장된 도서라 삭제 확인 필요
+        case failed                   // Realm 처리 실패
     }
 
     func transform(_ input: Input) -> Output {
         let errorTracker = PublishSubject<String>()
         let loadingTracker = PublishSubject<Bool>()
-        let toastMessage = PublishSubject<String>()
-        let showFolderSelectionSubject = PublishSubject<(Item, Int)>()
-        let showDeleteConfirmationSubject = PublishSubject<(Item, Int)>()
-        let updateFavoriteStateSubject = PublishSubject<(Int, Bool)>()
 
         let searchResult = input.searchTrigger
             .withLatestFrom(input.searchText)
@@ -74,102 +81,124 @@ final class SearchViewModel: BaseViewModel {
                 "검색 결과 (\(items.count)건)"
             }
 
-        // 좋아요 버튼 탭 처리
-        input.favoriteButtonTapped
-            .subscribe(onNext: { [weak self] (item, index) in
-                guard let self = self else { return }
+        // 좋아요 탭과 삭제 확인을 각각 FavoriteEvent로 변환한 뒤 하나의 스트림으로 합침
+        // share(): 아래에서 이 스트림을 여러 번 구독해도 Realm 처리는 이벤트당 한 번만 실행됨
+        let favoriteEvents = Observable.merge(
+            input.favoriteButtonTapped.compactMap { [weak self] item in self?.handleFavoriteTap(item) },
+            input.deleteConfirmed.compactMap { [weak self] item in self?.handleDeleteConfirmed(item) }
+        )
+        .share()
 
-                do {
-                    guard let isbn13 = item.isbn13 else { return }
+        let showFolderSelection = favoriteEvents
+            .compactMap { event -> Item? in
+                guard case .askFolder(let item) = event else { return nil }
+                return item
+            }
+            .asSignal(onErrorSignalWith: .empty())
 
-                    // 현재 저장 상태 확인
-                    let existingBook = try self.bookRepository.getBook(byISBN: isbn13)
-                    let isFavorite = existingBook != nil
+        let showDeleteConfirmation = favoriteEvents
+            .compactMap { event -> Item? in
+                guard case .askDelete(let item) = event else { return nil }
+                return item
+            }
+            .asSignal(onErrorSignalWith: .empty())
 
-                    if !isFavorite {
-                        // 추가 로직
-                        let allFolders = try self.folderRepository.getAllFolders(type: .book)
-                        let userCreatedFolders = allFolders.filter { !$0.isBasic }
-
-                        if userCreatedFolders.isEmpty {
-                            // 기본 폴더에 바로 추가
-                            if let defaultFolder = try self.folderRepository.getBasicFolder(type: .book) {
-                                let bookRealmModel = BookMapper.toRealmModel(from: item)
-                                try self.bookRepository.addBookAndAddToFolder(
-                                    bookRealmModel,
-                                    folderId: defaultFolder.id
-                                )
-                                print("도서가 기본 폴더에 저장되었습니다: \(bookRealmModel.title)")
-
-                                updateFavoriteStateSubject.onNext((index, true))
-                                toastMessage.onNext("내 서재에 추가되었습니다.")
-                            }
-                        } else {
-                            // 폴더 선택 Alert 표시
-                            showFolderSelectionSubject.onNext((item, index))
-                        }
-                    } else {
-                        // 삭제 확인 Alert 표시
-                        showDeleteConfirmationSubject.onNext((item, index))
-                    }
-                } catch {
-                    print("좋아요 처리 실패: \(error)")
-                    toastMessage.onNext("오류가 발생했습니다.")
+        let favoriteChanged = favoriteEvents
+            .compactMap { event -> (isbn13: String, isFavorite: Bool)? in
+                switch event {
+                case .added(let isbn13): return (isbn13, true)
+                case .removed(let isbn13): return (isbn13, false)
+                case .askFolder, .askDelete, .failed: return nil
                 }
-            })
-            .disposed(by: disposeBag)
+            }
+            .asSignal(onErrorSignalWith: .empty())
 
-        // 삭제 확인 후 실제 삭제 처리
-        input.deleteConfirmed
-            .subscribe(onNext: { [weak self] (item, index) in
-                guard let self = self else { return }
-
-                do {
-                    if let isbn13 = item.isbn13,
-                       let existingBook = try self.bookRepository.getBook(byISBN: isbn13),
-                       let defaultFolder = try self.folderRepository.getBasicFolder(type: .book) {
-
-                        try self.bookRepository.removeBookFromFolderAndDelete(
-                            bookId: existingBook.id,
-                            folderId: defaultFolder.id
-                        )
-
-                        updateFavoriteStateSubject.onNext((index, false))
-                        toastMessage.onNext("내 서재에서 제거되었습니다.")
-                    }
-                } catch {
-                    print("도서 삭제 실패: \(error)")
-                    toastMessage.onNext("오류가 발생했습니다.")
+        let showToast = favoriteEvents
+            .compactMap { event -> String? in
+                switch event {
+                case .added: return "내 서재에 추가되었습니다."
+                case .removed: return "내 서재에서 제거되었습니다."
+                case .failed: return "오류가 발생했습니다."
+                case .askFolder, .askDelete: return nil
                 }
-            })
-            .disposed(by: disposeBag)
+            }
+            .asSignal(onErrorSignalWith: .empty())
 
         return Output(
             books: books,
             isLoading: loadingTracker.asDriver(onErrorJustReturn: false),
-            error: errorTracker.asDriver(onErrorJustReturn: ""),
             resultCount: resultCount,
-            showToast: toastMessage.asDriver(onErrorJustReturn: ""),
-            showFolderSelection: showFolderSelectionSubject.asDriver(onErrorDriveWith: .empty()),
-            showDeleteConfirmation: showDeleteConfirmationSubject.asDriver(onErrorDriveWith: .empty()),
-            updateFavoriteState: updateFavoriteStateSubject.asDriver(onErrorDriveWith: .empty())
+            error: errorTracker.asSignal(onErrorSignalWith: .empty()),
+            showToast: showToast,
+            showFolderSelection: showFolderSelection,
+            showDeleteConfirmation: showDeleteConfirmation,
+            favoriteChanged: favoriteChanged
         )
+    }
+
+    // MARK: - Favorite
+
+    /// 좋아요 버튼 탭 처리: 저장 상태에 따라 저장 / 폴더 선택 / 삭제 확인 중 하나로 결정
+    private func handleFavoriteTap(_ item: Item) -> FavoriteEvent? {
+        guard let isbn13 = item.isbn13 else { return nil }
+
+        do {
+            // 이미 저장된 도서면 삭제 확인
+            if try bookRepository.getBook(byISBN: isbn13) != nil {
+                return .askDelete(item)
+            }
+
+            // 사용자가 만든 폴더가 있으면 폴더 선택
+            let userCreatedFolders = try folderRepository.getAllFolders(type: .book).filter { !$0.isBasic }
+            if !userCreatedFolders.isEmpty {
+                return .askFolder(item)
+            }
+
+            // 없으면 기본 폴더에 바로 저장
+            guard let defaultFolder = try folderRepository.getBasicFolder(type: .book) else { return nil }
+            try bookRepository.addBookAndAddToFolder(
+                BookMapper.toRealmModel(from: item),
+                folderId: defaultFolder.id
+            )
+            return .added(isbn13: isbn13)
+        } catch {
+            print("좋아요 처리 실패: \(error)")
+            return .failed
+        }
+    }
+
+    // 삭제 확인 처리
+    private func handleDeleteConfirmed(_ item: Item) -> FavoriteEvent? {
+        do {
+            guard let isbn13 = item.isbn13,
+                  let existingBook = try bookRepository.getBook(byISBN: isbn13),
+                  let defaultFolder = try folderRepository.getBasicFolder(type: .book) else { return nil }
+
+            try bookRepository.removeBookFromFolderAndDelete(
+                bookId: existingBook.id,
+                folderId: defaultFolder.id
+            )
+            return .removed(isbn13: isbn13)
+        } catch {
+            print("도서 삭제 실패: \(error)")
+            return .failed
+        }
     }
 
     // MARK: - Public Methods
 
-    /// 선택한 폴더에 도서 추가
-    func addBookToSelectedFolder(item: Item, folder: FolderRealmModel, index: Int) -> Observable<(Int, Bool, String)> {
+    // 선택한 폴더에 도서 추가
+    func addBookToSelectedFolder(item: Item, folder: FolderRealmModel) -> Observable<(isAdded: Bool, message: String)> {
         return Observable.create { [weak self] observer in
             guard let self = self else {
-                observer.onNext((index, false, "오류가 발생했습니다."))
+                observer.onNext((false, "오류가 발생했습니다."))
                 observer.onCompleted()
                 return Disposables.create()
             }
 
             do {
                 guard let isbn13 = item.isbn13 else {
-                    observer.onNext((index, false, "도서 정보가 올바르지 않습니다."))
+                    observer.onNext((false, "도서 정보가 올바르지 않습니다."))
                     observer.onCompleted()
                     return Disposables.create()
                 }
@@ -180,17 +209,15 @@ final class SearchViewModel: BaseViewModel {
                         bookRealmModel,
                         folderId: folder.id
                     )
-                    print("도서가 \(folder.name ?? "폴더")에 저장되었습니다: \(bookRealmModel.title)")
-
-                    observer.onNext((index, true, "\(folder.name ?? "폴더")에 추가되었습니다."))
+                    observer.onNext((true, "\(folder.name ?? "폴더")에 추가되었습니다."))
                 } else {
-                    observer.onNext((index, false, "이미 추가된 도서입니다."))
+                    observer.onNext((false, "이미 추가된 도서입니다."))
                 }
 
                 observer.onCompleted()
             } catch {
                 print("폴더에 도서 추가 실패: \(error)")
-                observer.onNext((index, false, "오류가 발생했습니다."))
+                observer.onNext((false, "오류가 발생했습니다."))
                 observer.onCompleted()
             }
 
