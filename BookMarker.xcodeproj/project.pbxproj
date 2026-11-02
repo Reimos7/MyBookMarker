@@ -243,7 +243,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BookMarker/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BookMarker;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "주변 독서 공간(카페, 도서관, 스터디카페)을 찾기 위해 현재 위치 정보가 필요합니다.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "장소 사진을 촬영하기 위해 카메라 접근이 필요합니다.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "근처 독서 장소(카페, 도서관, 스터디카페)를 찾기 위해 위치 정보가 필요합니다.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "장소 사진을 선택하기 위해 사진 라이브러리 접근이 필요합니다.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
@@ -280,7 +282,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BookMarker/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BookMarker;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "주변 독서 공간(카페, 도서관, 스터디카페)을 찾기 위해 현재 위치 정보가 필요합니다.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "장소 사진을 촬영하기 위해 카메라 접근이 필요합니다.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "근처 독서 장소(카페, 도서관, 스터디카페)를 찾기 위해 위치 정보가 필요합니다.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "장소 사진을 선택하기 위해 사진 라이브러리 접근이 필요합니다.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
@@ -513,7 +517,7 @@
 			repositoryURL = "https://github.com/realm/realm-swift";
 			requirement = {
 				kind = exactVersion;
-				version = 20.0.3;
+				version = 20.0.6;
 			};
 		};
 		6EF8F7CA2E9CFD8B004D71C4 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
