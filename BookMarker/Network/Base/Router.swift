@@ -17,23 +17,6 @@ enum Router {
     case categoryBest(categoryId: BookCategory)
     case editorChoice(categoryId: BookCategory)
         
-    var bookApiType: NetworkBookAPIType {
-        switch self {
-        case .bestSeller:
-            return .bestSeller
-        case .newBooks:
-            return .newBooks
-        case .author:
-            return .author
-        case .keyword:
-            return .keyword
-        case .categoryBest:
-            return .bestSeller
-        case .editorChoice:
-            return .editorChoice
-        }
-    }
-    
     // baseUrl이랑 같이 사용할 요청 URL
     var endPoint: URL {
         switch self {
